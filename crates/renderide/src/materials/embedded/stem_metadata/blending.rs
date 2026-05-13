@@ -35,7 +35,34 @@ mod tests {
     use crate::materials::ShaderPermutation;
 
     use super::{embedded_stem_uses_scene_color_snapshot, embedded_stem_uses_scene_depth_snapshot};
-    use crate::materials::embedded::stem_metadata::embedded_stem_requires_intersection_pass;
+    use crate::materials::embedded::stem_metadata::{
+        embedded_composed_stem_for_permutation, embedded_stem_requires_intersection_pass,
+    };
+
+    const FILTER_STEMS: &[&str] = &[
+        "blur_default",
+        "blur_perobject_default",
+        "channelmatrix_default",
+        "channelmatrix_perobject_default",
+        "gamma_default",
+        "gamma_perobject_default",
+        "grayscale_default",
+        "grayscale_perobject_default",
+        "hsv_default",
+        "hsv_perobject_default",
+        "invert_default",
+        "invert_perobject_default",
+        "lut_default",
+        "lut_perobject_default",
+        "pixelate_default",
+        "pixelate_perobject_default",
+        "posterize_default",
+        "posterize_perobject_default",
+        "refract_default",
+        "refract_perobject_default",
+        "threshold_default",
+        "threshold_perobject_default",
+    ];
 
     #[test]
     fn metadata_flags_cover_snapshot_and_intersection_material_classes() {
@@ -83,5 +110,33 @@ mod tests {
             "pbsintersect_default",
             mono
         ));
+    }
+
+    #[test]
+    fn filter_materials_are_single_forward_filter_scene_color_passes() {
+        for &stem in FILTER_STEMS {
+            for permutation in [ShaderPermutation(0), SHADER_PERM_MULTIVIEW_STEREO] {
+                assert!(
+                    embedded_stem_uses_scene_color_snapshot(stem, permutation),
+                    "{stem:?} should sample scene color for permutation {permutation:?}",
+                );
+                assert!(
+                    !embedded_stem_requires_intersection_pass(stem, permutation),
+                    "{stem:?} should not route through the intersection subpass",
+                );
+
+                let composed = embedded_composed_stem_for_permutation(stem, permutation);
+                let passes = crate::embedded_shaders::embedded_target_passes(&composed);
+                assert_eq!(
+                    passes.len(),
+                    1,
+                    "{composed:?} should declare exactly one raster pass",
+                );
+                assert_eq!(
+                    passes[0].name, "forward_filter",
+                    "{composed:?} should draw through the filter pass",
+                );
+            }
+        }
     }
 }

@@ -115,7 +115,7 @@ pub trait GraphFrameResources: Send + Sync {
         source_depth: &wgpu::Texture,
         viewport: (u32, u32),
         multiview: bool,
-    );
+    ) -> bool;
 
     /// Copies the current HDR scene color into this view's sampled scene-color snapshot.
     fn copy_scene_color_snapshot_for_view(
@@ -125,7 +125,7 @@ pub trait GraphFrameResources: Send + Sync {
         source_color: &wgpu::Texture,
         viewport: (u32, u32),
         multiview: bool,
-    );
+    ) -> bool;
 
     /// Uniform parameters for the active skybox/reflection-probe specular source.
     fn skybox_specular_uniform_params(&self) -> SkyboxSpecularUniformParams;

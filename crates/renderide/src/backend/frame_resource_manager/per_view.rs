@@ -362,13 +362,14 @@ impl FrameResourceManager {
         source_depth: &wgpu::Texture,
         viewport: (u32, u32),
         multiview: bool,
-    ) {
+    ) -> bool {
         let Some(state) = self.per_view_frame.get(view_id) else {
-            return;
+            logger::warn!("scene depth snapshot copy: missing per-view frame for {view_id:?}");
+            return false;
         };
         state
             .scene_snapshots
-            .encode_depth_copy(encoder, source_depth, viewport, multiview);
+            .encode_depth_copy(encoder, source_depth, viewport, multiview)
     }
 
     /// Copies the main color attachment into this view's scene-color snapshot.
@@ -379,12 +380,13 @@ impl FrameResourceManager {
         source_color: &wgpu::Texture,
         viewport: (u32, u32),
         multiview: bool,
-    ) {
+    ) -> bool {
         let Some(state) = self.per_view_frame.get(view_id) else {
-            return;
+            logger::warn!("scene color snapshot copy: missing per-view frame for {view_id:?}");
+            return false;
         };
         state
             .scene_snapshots
-            .encode_color_copy(encoder, source_color, viewport, multiview);
+            .encode_color_copy(encoder, source_color, viewport, multiview)
     }
 }

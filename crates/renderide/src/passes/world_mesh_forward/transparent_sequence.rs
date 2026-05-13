@@ -225,14 +225,14 @@ fn copy_grab_snapshot(
     ctx: &mut EncoderPassCtx<'_, '_, '_>,
     prepared: &PreparedWorldMeshForwardFrame,
     resources: WorldMeshForwardGraphResources,
-) {
+) -> bool {
     encode_world_mesh_forward_color_snapshot(
         ctx.graph_resources,
         ctx.encoder,
         ctx.pass_frame,
         prepared,
         resources,
-    );
+    )
 }
 
 fn final_resolve_after_tail(
@@ -273,6 +273,7 @@ fn record_transparent_sequence(
             continue;
         }
 
+        let flushed_post_groups = pending_post_start.is_some();
         if !flush_post_groups(
             ctx,
             prepared,
@@ -282,8 +283,16 @@ fn record_transparent_sequence(
         )? {
             return Ok(false);
         }
+        recorded_any |= flushed_post_groups;
         resolve_for_grab_snapshot(ctx, resources)?;
-        copy_grab_snapshot(ctx, prepared, resources);
+        if !copy_grab_snapshot(ctx, prepared, resources) {
+            logger::warn!(
+                "WorldMeshForwardTransparentSequence: skipping grab-pass filter group {} because scene-color snapshot copy failed",
+                grab_idx
+            );
+            grab_idx += 1;
+            continue;
+        }
         if !draw_tail_groups(
             ctx,
             prepared,
@@ -352,6 +361,7 @@ enum TransparentSequenceTestOp {
     ResolveBeforeGrab(usize),
     SnapshotForGrab(usize),
     DrawGrab(usize),
+    SkipGrabMissingSnapshot(usize),
     FinalResolve,
 }
 
@@ -359,6 +369,15 @@ enum TransparentSequenceTestOp {
 fn collect_transparent_sequence_test_ops(
     plan: &InstancePlan,
     sample_count: u32,
+) -> Vec<TransparentSequenceTestOp> {
+    collect_transparent_sequence_test_ops_with_snapshot_result(plan, sample_count, true)
+}
+
+#[cfg(test)]
+fn collect_transparent_sequence_test_ops_with_snapshot_result(
+    plan: &InstancePlan,
+    sample_count: u32,
+    snapshot_copy_succeeds: bool,
 ) -> Vec<TransparentSequenceTestOp> {
     let mut ops = Vec::new();
     let mut post_idx = 0usize;
@@ -377,13 +396,18 @@ fn collect_transparent_sequence_test_ops(
 
         if let Some(start) = pending_post_start.take() {
             ops.push(TransparentSequenceTestOp::DrawPostRange(start, post_idx));
+            recorded_any = true;
         }
         if sample_count > 1 {
             ops.push(TransparentSequenceTestOp::ResolveBeforeGrab(grab_idx));
         }
         ops.push(TransparentSequenceTestOp::SnapshotForGrab(grab_idx));
-        ops.push(TransparentSequenceTestOp::DrawGrab(grab_idx));
-        recorded_any = true;
+        if snapshot_copy_succeeds {
+            ops.push(TransparentSequenceTestOp::DrawGrab(grab_idx));
+            recorded_any = true;
+        } else {
+            ops.push(TransparentSequenceTestOp::SkipGrabMissingSnapshot(grab_idx));
+        }
         grab_idx += 1;
     }
 
@@ -399,7 +423,10 @@ fn collect_transparent_sequence_test_ops(
 
 #[cfg(test)]
 mod tests {
-    use super::{TransparentSequenceTestOp, collect_transparent_sequence_test_ops};
+    use super::{
+        TransparentSequenceTestOp, collect_transparent_sequence_test_ops,
+        collect_transparent_sequence_test_ops_with_snapshot_result,
+    };
     use crate::world_mesh::{DrawGroup, InstancePlan};
 
     fn group(representative_draw_idx: usize) -> DrawGroup {
@@ -478,6 +505,42 @@ mod tests {
                 TransparentSequenceTestOp::ResolveBeforeGrab(1),
                 TransparentSequenceTestOp::SnapshotForGrab(1),
                 TransparentSequenceTestOp::DrawGrab(1),
+                TransparentSequenceTestOp::FinalResolve,
+            ]
+        );
+    }
+
+    #[test]
+    fn failed_snapshot_copy_skips_grab_draw() {
+        let plan = InstancePlan {
+            transparent_groups: vec![group(3)],
+            ..Default::default()
+        };
+
+        assert_eq!(
+            collect_transparent_sequence_test_ops_with_snapshot_result(&plan, 1, false),
+            vec![
+                TransparentSequenceTestOp::SnapshotForGrab(0),
+                TransparentSequenceTestOp::SkipGrabMissingSnapshot(0),
+            ]
+        );
+    }
+
+    #[test]
+    fn post_groups_before_failed_grab_still_count_as_recorded_tail() {
+        let plan = InstancePlan {
+            post_skybox_groups: vec![group(1)],
+            transparent_groups: vec![group(3)],
+            ..Default::default()
+        };
+
+        assert_eq!(
+            collect_transparent_sequence_test_ops_with_snapshot_result(&plan, 4, false),
+            vec![
+                TransparentSequenceTestOp::DrawPostRange(0, 1),
+                TransparentSequenceTestOp::ResolveBeforeGrab(0),
+                TransparentSequenceTestOp::SnapshotForGrab(0),
+                TransparentSequenceTestOp::SkipGrabMissingSnapshot(0),
                 TransparentSequenceTestOp::FinalResolve,
             ]
         );

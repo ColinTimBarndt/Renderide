@@ -272,7 +272,7 @@ impl SceneSnapshotSet {
         kind: SceneSnapshotKind,
         layout: SceneSnapshotLayout,
         viewport: (u32, u32),
-    ) {
+    ) -> bool {
         let width = viewport.0.max(1);
         let height = viewport.1.max(1);
         let format = source.format();
@@ -286,7 +286,7 @@ impl SceneSnapshotSet {
                 height,
                 format
             );
-            return;
+            return false;
         }
         let aspect = kind.copy_aspect(format);
         encoder.copy_texture_to_texture(
@@ -308,6 +308,7 @@ impl SceneSnapshotSet {
                 depth_or_array_layers: layout.layer_count(),
             },
         );
+        true
     }
 
     /// Returns an immutable target reference.

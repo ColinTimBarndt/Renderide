@@ -50,6 +50,7 @@ struct BlurVertexOutput {
     @location(3) @interpolate(flat) view_layer: u32,
     @location(4) obj_xy: vec2<f32>,
     @location(5) view_t: vec4<f32>,
+    @location(6) clip_w: f32,
 }
 
 fn blur_kw(mask: u32) -> bool {
@@ -103,6 +104,7 @@ fn vs_main(
     out.view_layer = inner.view_layer;
     out.obj_xy = pos.xy;
     out.view_t = vec4<f32>(vbasis::world_to_view_normal(inner.world_t.xyz, vp), inner.world_t.w);
+    out.clip_w = inner.clip_pos.w;
     return out;
 }
 
@@ -123,7 +125,7 @@ fn refract_offset(uv0: vec2<f32>, view_n: vec3<f32>, view_t: vec4<f32>, clip_w: 
         let tbn = pnorm::orthonormal_tbn(n, view_t);
         n = normalize(tbn * ts);
     }
-    return n.xy / clip_w * mat._RefractionStrength;
+    return n.xy / max(abs(clip_w), 0.000001) * mat._RefractionStrength;
 }
 
 fn spread_modulation(uv0: vec2<f32>) -> vec2<f32> {
@@ -159,7 +161,7 @@ fn fs_main(in: BlurVertexOutput) -> @location(0) vec4<f32> {
         discard;
     }
     let screen_uv = gp::frag_screen_uv(in.clip_pos);
-    let center_uv = screen_uv - refract_offset(in.primary_uv, in.view_n, in.view_t, in.clip_pos.w);
+    let center_uv = screen_uv - refract_offset(in.primary_uv, in.view_n, in.view_t, in.clip_w);
     let fade = sds::depth_fade_at_uv(center_uv, in.world_pos, in.view_layer, mat._DepthDivisor);
     let spread = mat._Spread.xy * spread_modulation(in.primary_uv) * fade;
     return rg::retain_globals_additive(sample_blur(center_uv, spread, mat._Iterations, in.view_layer));

@@ -46,8 +46,7 @@ pub(crate) fn encode_world_mesh_forward_depth_snapshot(
             frame.view.depth_texture,
             frame.view.viewport_px,
             prepared.pipeline.use_multiview,
-        );
-    true
+        )
 }
 
 /// Returns whether the scene-depth snapshot copy should be recorded for this view.

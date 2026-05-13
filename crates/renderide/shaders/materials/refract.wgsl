@@ -42,6 +42,7 @@ struct RefractVertexOutput {
     @location(4) view_n: vec3<f32>,
     @location(5) obj_xy: vec2<f32>,
     @location(6) view_t: vec4<f32>,
+    @location(7) clip_w: f32,
 }
 
 fn refract_kw(mask: u32) -> bool {
@@ -84,6 +85,7 @@ fn vs_main(
     out.view_n = inner.view_n;
     out.obj_xy = pos.xy;
     out.view_t = vec4<f32>(vbasis::world_to_view_normal(inner.world_t.xyz, vp), inner.world_t.w);
+    out.clip_w = inner.clip_pos.w;
     return out;
 }
 
@@ -96,7 +98,7 @@ fn refract_offset(uv0: vec2<f32>, view_n: vec3<f32>, view_t: vec4<f32>, clip_w: 
         );
         n = normalize(pnorm::orthonormal_tbn(n, view_t) * ts);
     }
-    return (n.xy / clip_w) * mat._RefractionStrength;
+    return (n.xy / max(abs(clip_w), 0.000001)) * mat._RefractionStrength;
 }
 
 fn refracted_screen_uv(
@@ -105,11 +107,12 @@ fn refracted_screen_uv(
     view_n: vec3<f32>,
     view_t: vec4<f32>,
     frag_pos: vec4<f32>,
+    clip_w: f32,
     world_pos: vec3<f32>,
     view_layer: u32,
 ) -> vec2<f32> {
     let fade = sds::depth_fade(frag_pos, world_pos, view_layer, mat._DepthDivisor);
-    let offset = refract_offset(uv0, view_n, view_t, frag_pos.w) * fade * fm::screen_vignette(screen_uv);
+    let offset = refract_offset(uv0, view_n, view_t, clip_w) * fade * fm::screen_vignette(screen_uv);
     let grab_uv = screen_uv - offset;
     let sampled_depth = sds::scene_linear_depth_at_uv(grab_uv, view_layer);
     let fragment_depth = sds::fragment_linear_depth(world_pos, view_layer);
@@ -126,9 +129,16 @@ fn fs_main(in: RefractVertexOutput) -> @location(0) vec4<f32> {
         discard;
     }
     let screen_uv = gp::frag_screen_uv(in.clip_pos);
-    let color = gp::sample_scene_color(
-        refracted_screen_uv(screen_uv, in.primary_uv, in.view_n, in.view_t, in.clip_pos, in.world_pos, in.view_layer),
+    let refracted_uv = refracted_screen_uv(
+        screen_uv,
+        in.primary_uv,
+        in.view_n,
+        in.view_t,
+        in.clip_pos,
+        in.clip_w,
+        in.world_pos,
         in.view_layer,
     );
+    let color = gp::sample_scene_color(refracted_uv, in.view_layer);
     return rg::retain_globals_additive(color);
 }

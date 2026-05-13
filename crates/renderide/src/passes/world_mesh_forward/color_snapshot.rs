@@ -19,12 +19,17 @@ pub(crate) fn encode_world_mesh_forward_color_snapshot(
 ) -> bool {
     profiling::scope!("world_mesh_forward::encode_color_snapshot");
     if !color_snapshot_recording_needed(prepared.helper_needs) {
+        logger::warn!(
+            "world mesh color snapshot copy: helper needs did not request a color snapshot"
+        );
         return false;
     }
     if !frame.shared.frame_resources.has_frame_gpu() {
+        logger::warn!("world mesh color snapshot copy: frame GPU resources are unavailable");
         return false;
     }
     let Some(source_color) = graph_resources.transient_texture(resources.scene_color_hdr) else {
+        logger::warn!("world mesh color snapshot copy: resolved scene color source is unavailable");
         return false;
     };
     frame
@@ -36,8 +41,7 @@ pub(crate) fn encode_world_mesh_forward_color_snapshot(
             &source_color.texture,
             frame.view.viewport_px,
             prepared.pipeline.use_multiview,
-        );
-    true
+        )
 }
 
 /// Returns whether the scene-color snapshot copy should be recorded for this view.

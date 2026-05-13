@@ -131,14 +131,8 @@ impl GraphFrameResources for FrameResourceManager {
         source_depth: &wgpu::Texture,
         viewport: (u32, u32),
         multiview: bool,
-    ) {
-        self.copy_scene_depth_snapshot_for_view(
-            view_id,
-            encoder,
-            source_depth,
-            viewport,
-            multiview,
-        );
+    ) -> bool {
+        self.copy_scene_depth_snapshot_for_view(view_id, encoder, source_depth, viewport, multiview)
     }
 
     fn copy_scene_color_snapshot_for_view(
@@ -148,14 +142,8 @@ impl GraphFrameResources for FrameResourceManager {
         source_color: &wgpu::Texture,
         viewport: (u32, u32),
         multiview: bool,
-    ) {
-        self.copy_scene_color_snapshot_for_view(
-            view_id,
-            encoder,
-            source_color,
-            viewport,
-            multiview,
-        );
+    ) -> bool {
+        self.copy_scene_color_snapshot_for_view(view_id, encoder, source_color, viewport, multiview)
     }
 
     fn skybox_specular_uniform_params(&self) -> SkyboxSpecularUniformParams {

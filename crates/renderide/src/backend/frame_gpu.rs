@@ -161,14 +161,14 @@ impl PerViewSceneSnapshots {
         source_depth: &wgpu::Texture,
         viewport: (u32, u32),
         multiview: bool,
-    ) {
+    ) -> bool {
         self.set.encode_copy(
             encoder,
             source_depth,
             SceneSnapshotKind::Depth,
             SceneSnapshotLayout::from_multiview(multiview),
             viewport,
-        );
+        )
     }
 
     /// Encodes a copy into this view's scene-color snapshot.
@@ -178,14 +178,14 @@ impl PerViewSceneSnapshots {
         source_color: &wgpu::Texture,
         viewport: (u32, u32),
         multiview: bool,
-    ) {
+    ) -> bool {
         self.set.encode_copy(
             encoder,
             source_color,
             SceneSnapshotKind::Color,
             SceneSnapshotLayout::from_multiview(multiview),
             viewport,
-        );
+        )
     }
 }
 
