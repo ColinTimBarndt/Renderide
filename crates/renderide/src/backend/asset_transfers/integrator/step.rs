@@ -187,8 +187,7 @@ fn step_trail_render_buffer_task(
         let ack_queued = ipc.send_background_reliable(RendererCommand::TrailRenderBufferConsumed(
             TrailRenderBufferConsumed { asset_id },
         ));
-        if !ack_queued {
-        }
+        if !ack_queued {}
     }
     StepResult::Done
 }
