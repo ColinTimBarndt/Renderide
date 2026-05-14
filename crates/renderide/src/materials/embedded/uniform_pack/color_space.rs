@@ -65,7 +65,10 @@ impl MaterialUniformValueSpaces {
 fn srgb_vec4_uniform_field(field_name: &str) -> bool {
     matches!(
         field_name,
-        "_BackgroundColor"
+        "_AccumulationColor"
+            | "_AccumulationColorBottom"
+            | "_AccumulationColorTop"
+            | "_BackgroundColor"
             | "_BaseColor"
             | "_BehindColor"
             | "_BehindFarColor"
@@ -178,6 +181,15 @@ mod tests {
         let pbs = reflected_material_value_spaces("pbsmetallic_default");
         assert!(pbs.is_srgb_vec4("_Color"));
         assert!(pbs.is_srgb_vec4("_EmissionColor"));
+    }
+
+    #[test]
+    fn metadata_marks_fogbox_accumulation_colors() {
+        let fogbox = reflected_material_value_spaces("fogboxvolume_default");
+        assert!(fogbox.is_srgb_vec4("_BaseColor"));
+        assert!(fogbox.is_srgb_vec4("_AccumulationColor"));
+        assert!(fogbox.is_srgb_vec4("_AccumulationColorBottom"));
+        assert!(fogbox.is_srgb_vec4("_AccumulationColorTop"));
     }
 
     #[test]
