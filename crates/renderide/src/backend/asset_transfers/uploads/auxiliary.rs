@@ -138,7 +138,6 @@ pub fn on_trail_render_buffer_unload(
 ) {
     let asset_id = unload.asset_id;
     queue.catalogs.trail_render_buffer_uploads.remove(&asset_id);
-    logger::debug!("trail render buffer {asset_id}: unloaded placeholder upload");
 }
 
 /// Stores the Gaussian splat renderer config.

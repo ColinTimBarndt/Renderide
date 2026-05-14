@@ -170,7 +170,6 @@ fn step_point_render_buffer_task(
             );
         }
     }
-    logger::debug!("point render buffer {asset_id}: consumed placeholder upload count={count}");
     StepResult::Done
 }
 
