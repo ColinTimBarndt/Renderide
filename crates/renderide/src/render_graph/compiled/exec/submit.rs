@@ -48,7 +48,7 @@ fn drain_upload_command_buffer(
     let drain_ms = elapsed_ms(upload_drain_start);
     if let Some(flush) = upload_flush {
         DrainedUploadCommand {
-            command_buffer: Some(flush.command_buffer),
+            command_buffer: flush.command_buffer,
             on_submitted_work_done: flush.on_submitted_work_done,
             stats: flush.stats,
             drain_ms,
