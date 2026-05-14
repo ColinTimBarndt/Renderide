@@ -21,6 +21,7 @@
 
 #import renderide::xiexe::toon2 as xs
 #import renderide::xiexe::toon2::base as xb
+#import renderide::xiexe::toon2::outline as xo
 
 const XIEE_ALPHA_MODE: u32 = 0u;
 
@@ -58,9 +59,9 @@ fn vs_outline(
     @location(5) uv1: vec2<f32>,
 ) -> xb::VertexOutput {
 #ifdef MULTIVIEW
-    return xs::vertex_outline(instance_index, view_idx, pos, n, uv0, color, tangent, uv1);
+    return xo::vertex_outline(instance_index, view_idx, pos, n, uv0, color, tangent, uv1);
 #else
-    return xs::vertex_outline(instance_index, 0u, pos, n, uv0, color, tangent, uv1);
+    return xo::vertex_outline(instance_index, 0u, pos, n, uv0, color, tangent, uv1);
 #endif
 }
 
@@ -78,7 +79,7 @@ fn fs_outline(
     @location(6) color: vec4<f32>,
     @location(8) @interpolate(flat) view_layer: u32,
 ) -> @location(0) vec4<f32> {
-    return xs::fragment_outline(
+    return xo::fragment_outline(
         frag_pos, front_facing, world_pos, world_n, world_t, world_b, uv0, uv1, color, view_layer, XIEE_ALPHA_MODE
     );
 }

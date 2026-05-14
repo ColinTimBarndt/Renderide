@@ -424,7 +424,7 @@ fn xiexe_static_stems_use_static_vertexlight_keyword_layout() -> io::Result<()> 
     ] {
         let src = material_source(file_name)?;
         assert!(
-            src.contains("xs::fragment_outline_for_layout("),
+            src.contains("xo::fragment_outline_for_layout("),
             "{file_name} must pass the static keyword layout into the outline fragment path"
         );
     }

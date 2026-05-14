@@ -32,8 +32,10 @@
 /// Outline vertex transform. Samples `_OutlineMask` at UV0, extrudes
 /// the vertex along its object-space normal by `_OutlineWidth * 0.01 * mask * dist_scale`,
 /// then runs the standard vertex pipeline so downstream interpolants stay consistent
-/// with the forward path. The output color is overridden with `_OutlineColor` so the
-/// fragment can also distinguish outline fragments via `color.a` if needed.
+/// with the forward path. The output color is overridden with `_OutlineColor`.
+/// The reference shader used the alpha channel of the color as an indicator
+/// that the vertex is part of an outline or of the main mesh, however
+/// this is not necessary in this implementation thanks to the separate passes.
 fn vertex_outline(
     instance_index: u32,
     view_idx: u32,
@@ -52,10 +54,40 @@ fn vertex_outline(
     let dist_scale = min(distance(base_world.xyz, rg::camera_world_pos_for_view(view_idx)) * 3.0, 1.0);
     let outline_width = max(xb::mat._OutlineWidth, 0.0) * 0.01 * mask * dist_scale;
     let outline_pos = vec4<f32>(pos.xyz + xb::safe_normalize(n.xyz, vec3<f32>(0.0, 1.0, 0.0)) * outline_width, 1.0);
+    return xsurf::vertex_main(instance_index, view_idx, outline_pos, n, uv_primary, color, tangent, uv_secondary);
+}
 
-    var out = xsurf::vertex_main(instance_index, view_idx, outline_pos, n, uv_primary, color, tangent, uv_secondary);
-    out.color = vec4<f32>(xb::mat._OutlineColor.rgb, 1.0);
-    return out;
+/// Outline fragment shader. Selects between Emissive (flat `_OutlineColor`) and Lit
+/// (cluster-walk-modulated) per the three Unity-aliased outline-lighting flags. Surface
+/// sampling skips the back-face normal flip so cluster NdotL uses the outward-pointing
+/// shell normals.
+fn fragment_outline(
+    frag_pos: vec4<f32>,
+    front_facing: bool,
+    world_pos: vec3<f32>,
+    world_n: vec3<f32>,
+    world_t: vec3<f32>,
+    world_b: vec3<f32>,
+    uv_primary: vec2<f32>,
+    uv_secondary: vec2<f32>,
+    color: vec4<f32>,
+    view_layer: u32,
+    alpha_mode: u32,
+) -> vec4<f32> {
+    return fragment_outline_for_layout(
+        frag_pos,
+        front_facing,
+        world_pos,
+        world_n,
+        world_t,
+        world_b,
+        uv_primary,
+        uv_secondary,
+        color,
+        view_layer,
+        alpha_mode,
+        xvb::XTOON_KEYWORD_LAYOUT_GENERIC,
+    );
 }
 
 /// Outline fragment shader for a selected XSToon keyword layout.
@@ -73,6 +105,8 @@ fn fragment_outline_for_layout(
     alpha_mode: u32,
     keyword_layout: u32,
 ) -> vec4<f32> {
+    if (front_facing) { discard; } //Discard outlines front face always. This way cull off and outlines can be enabled.
+
     let s = xsurf::sample_surface_for_layout(false, front_facing, world_pos, world_n, world_t, world_b, uv_primary, uv_secondary, color, keyword_layout);
     let alpha = xa::apply_alpha(alpha_mode, frag_pos.xy, world_pos, view_layer, uv_primary, s.albedo.a, s.clip_alpha);
 
