@@ -155,7 +155,6 @@ fn step_point_render_buffer_task(
 ) -> StepResult {
     let upload = std::mem::take(upload);
     let asset_id = upload.asset_id;
-    let count = upload.count;
     asset
         .catalogs
         .point_render_buffer_uploads
@@ -180,8 +179,6 @@ fn step_trail_render_buffer_task(
 ) -> StepResult {
     let upload = std::mem::take(upload);
     let asset_id = upload.asset_id;
-    let trails_count = upload.trails_count;
-    let trail_point_count = upload.trail_point_count;
     asset
         .catalogs
         .trail_render_buffer_uploads
