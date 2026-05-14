@@ -7,17 +7,12 @@
 
 #import renderide::post::filter_math as fm
 #import renderide::post::filter_vertex as fv
-#import renderide::frame::globals as rg
+#import renderide::post::filter_common as fc
+#import renderide::post::filter_refraction as fr
 #import renderide::frame::grab_pass as gp
-#import renderide::core::normal_decode as nd
 #import renderide::frame::scene_depth_sample as sds
 #import renderide::core::uv as uvu
-#import renderide::pbs::normal as pnorm
-#import renderide::draw::per_draw as pd
-#import renderide::mesh::vertex as mv
-#import renderide::frame::view_basis as vbasis
 #import renderide::material::variant_bits as vb
-#import renderide::ui::rect_clip as uirc
 
 struct FiltersBlurMaterial {
     _Spread: vec4<f32>,
@@ -94,8 +89,6 @@ fn vs_main(
     let layer = 0u;
 #endif
     let inner = fv::vertex_main(instance_index, layer, pos, n, t, uv0);
-    let d = pd::get_draw(instance_index);
-    let vp = mv::select_view_proj(d, layer);
     var out: BlurVertexOutput;
     out.clip_pos = inner.clip_pos;
     out.primary_uv = inner.primary_uv;
@@ -103,7 +96,7 @@ fn vs_main(
     out.view_n = inner.view_n;
     out.view_layer = inner.view_layer;
     out.obj_xy = pos.xy;
-    out.view_t = vec4<f32>(vbasis::world_to_view_normal(inner.world_t.xyz, vp), inner.world_t.w);
+    out.view_t = fr::view_tangent_for_draw(instance_index, layer, inner.world_t);
     out.clip_w = inner.clip_pos.w;
     return out;
 }
@@ -113,19 +106,18 @@ fn refraction_enabled() -> bool {
 }
 
 fn refract_offset(uv0: vec2<f32>, view_n: vec3<f32>, view_t: vec4<f32>, clip_w: f32) -> vec2<f32> {
-    if (!refraction_enabled()) {
-        return vec2<f32>(0.0);
-    }
-    var n = normalize(view_n);
-    if (kw_REFRACT_NORMALMAP()) {
-        let ts = nd::decode_ts_normal_with_placeholder_sample(
-            textureSample(_NormalMap, _NormalMap_sampler, uvu::apply_st(uv0, mat._NormalMap_ST)),
-            1.0,
-        );
-        let tbn = pnorm::orthonormal_tbn(n, view_t);
-        n = normalize(tbn * ts);
-    }
-    return n.xy / max(abs(clip_w), 0.000001) * mat._RefractionStrength;
+    return fr::normal_offset(
+        refraction_enabled(),
+        kw_REFRACT_NORMALMAP(),
+        uv0,
+        view_n,
+        view_t,
+        clip_w,
+        mat._RefractionStrength,
+        mat._NormalMap_ST,
+        _NormalMap,
+        _NormalMap_sampler,
+    );
 }
 
 fn spread_modulation(uv0: vec2<f32>) -> vec2<f32> {
@@ -157,12 +149,10 @@ fn sample_blur(center_uv: vec2<f32>, spread: vec2<f32>, iterations: f32, view_la
 //#pass forward_filter
 @fragment
 fn fs_main(in: BlurVertexOutput) -> @location(0) vec4<f32> {
-    if (uirc::should_clip_rect_kw(in.obj_xy, mat._Rect, kw_RECTCLIP())) {
-        discard;
-    }
-    let screen_uv = gp::frag_screen_uv(in.clip_pos);
+    fc::discard_rect_if_enabled(in.obj_xy, mat._Rect, kw_RECTCLIP());
+    let screen_uv = fc::screen_uv(in.clip_pos);
     let center_uv = screen_uv - refract_offset(in.primary_uv, in.view_n, in.view_t, in.clip_w);
     let fade = sds::depth_fade_at_uv(center_uv, in.world_pos, in.view_layer, mat._DepthDivisor);
     let spread = mat._Spread.xy * spread_modulation(in.primary_uv) * fade;
-    return rg::retain_globals_additive(sample_blur(center_uv, spread, mat._Iterations, in.view_layer));
+    return fc::retain_globals(sample_blur(center_uv, spread, mat._Iterations, in.view_layer));
 }

@@ -186,6 +186,60 @@ fn pbs_transparent_roots_keep_authored_pass_directives() -> io::Result<()> {
 }
 
 #[test]
+fn pbs_material_roots_use_shared_sampling_and_mask_helpers() -> io::Result<()> {
+    for material in ["pbscolorsplat.wgsl", "pbscolorsplatspecular.wgsl"] {
+        let src = material_source(material)?;
+        assert!(
+            src.contains("psamp::unpack_packed_normal_xy("),
+            "{material} must use the shared packed-normal unpack helper"
+        );
+        assert!(
+            !src.contains("fn unpack_normal_xy"),
+            "{material} must not redeclare packed-normal unpacking"
+        );
+    }
+
+    for material in ["pbscolormask.wgsl", "pbscolormaskspecular.wgsl"] {
+        let src = material_source(material)?;
+        assert!(
+            src.contains("splat::color_mask_weights(mask)") && src.contains("mcolor::blend4_vec4("),
+            "{material} must use shared color-mask weighting and blend helpers"
+        );
+    }
+
+    for material in [
+        "pbsdualsided.wgsl",
+        "pbsdualsidedspecular.wgsl",
+        "pbsdualsidedtransparent.wgsl",
+        "pbsdualsidedtransparentspecular.wgsl",
+    ] {
+        let src = material_source(material)?;
+        assert!(
+            src.contains("psamp::sample_optional_two_sided_world_normal("),
+            "{material} must use the shared two-sided normal sampling helper"
+        );
+        for forbidden in [
+            "nd::decode_ts_normal_with_placeholder_sample",
+            "pnorm::orthonormal_tbn",
+        ] {
+            assert!(
+                !src.contains(forbidden),
+                "{material} must delegate `{forbidden}` through pbs::sampling"
+            );
+        }
+    }
+
+    let splat = module_source("pbs/splat.wgsl")?;
+    assert!(
+        splat.contains("fn color_mask_weights(mask: vec4<f32>) -> vec4<f32>")
+            && splat.contains("mask * clamp(1.0 / sum, 0.0, 1.0)"),
+        "pbs::splat must expose the Unity color-mask blend-weight policy"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn pbs_transparent_roots_use_premultiplied_transparent_lighting() -> io::Result<()> {
     for material in [
         "pbsdisplacetransparent.wgsl",

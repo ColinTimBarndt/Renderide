@@ -2,10 +2,8 @@
 
 
 #import renderide::post::filter_vertex as fv
-#import renderide::frame::globals as rg
-#import renderide::frame::grab_pass as gp
+#import renderide::post::filter_common as fc
 #import renderide::material::variant_bits as vb
-#import renderide::ui::rect_clip as uirc
 
 struct FiltersInvertMaterial {
     _Rect: vec4<f32>,
@@ -47,11 +45,9 @@ fn vs_main(
 //#pass forward_filter
 @fragment
 fn fs_main(in: fv::RectVertexOutput) -> @location(0) vec4<f32> {
-    if (uirc::should_clip_rect_kw(in.obj_xy, mat._Rect, kw_RECTCLIP())) {
-        discard;
-    }
+    fc::discard_rect_if_enabled(in.obj_xy, mat._Rect, kw_RECTCLIP());
 
-    let c = gp::sample_scene_color(gp::frag_screen_uv(in.clip_pos), in.view_layer);
+    let c = fc::sample_scene_color_at_clip(in.clip_pos, in.view_layer);
     let filtered = mix(c.rgb, 1.0 - c.rgb, mat._Lerp);
-    return rg::retain_globals_additive(vec4<f32>(filtered, c.a));
+    return fc::retain_globals(vec4<f32>(filtered, c.a));
 }

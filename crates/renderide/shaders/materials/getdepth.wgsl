@@ -9,10 +9,9 @@
 //! `RECTCLIP` discards fragments outside `_Rect` in object XY).
 
 #import renderide::post::filter_vertex as fv
-#import renderide::frame::globals as rg
+#import renderide::post::filter_common as fc
 #import renderide::frame::scene_depth_sample as sds
 #import renderide::material::variant_bits as vb
-#import renderide::ui::rect_clip as uirc
 
 struct FiltersGetDepthMaterial {
     _Rect: vec4<f32>,
@@ -63,9 +62,7 @@ fn vs_main(
 //#pass forward_filter
 @fragment
 fn fs_main(vout: fv::RectVertexOutput) -> @location(0) vec4<f32> {
-    if (uirc::should_clip_rect_kw(vout.obj_xy, mat._Rect, kw_RECTCLIP())) {
-        discard;
-    }
+    fc::discard_rect_if_enabled(vout.obj_xy, mat._Rect, kw_RECTCLIP());
 
     var depth = sds::scene_linear_depth(vout.clip_pos, vout.view_layer);
     if (kw_CLIP()) {
@@ -75,5 +72,5 @@ fn fs_main(vout: fv::RectVertexOutput) -> @location(0) vec4<f32> {
     depth = depth * mat._Multiply + mat._Offset;
     depth = clamp(depth, 0.0, 1.0);
 
-    return rg::retain_globals_additive(vec4<f32>(vec3<f32>(depth), 1.0));
+    return fc::retain_globals(vec4<f32>(vec3<f32>(depth), 1.0));
 }

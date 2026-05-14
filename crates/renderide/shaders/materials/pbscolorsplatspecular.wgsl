@@ -10,6 +10,7 @@
 #import renderide::mesh::vertex as mv
 #import renderide::pbs::normal as pnorm
 #import renderide::pbs::lighting as plight
+#import renderide::pbs::sampling as psamp
 #import renderide::pbs::splat as splat
 #import renderide::pbs::surface as psurf
 #import renderide::core::uv as uvu
@@ -122,12 +123,6 @@ fn splat_weights(uv_albedo: vec2<f32>, uv_color: vec2<f32>) -> vec4<f32> {
     return splat::normalize_weights(w);
 }
 
-fn unpack_normal_xy(xy: vec2<f32>, scale: f32) -> vec3<f32> {
-    let scaled = (xy * 2.0 - 1.0) * scale;
-    let z = sqrt(max(1.0 - dot(scaled, scaled), 0.0));
-    return vec3<f32>(scaled, z);
-}
-
 fn sample_normal_world(uv_albedo: vec2<f32>, world_n: vec3<f32>, world_t: vec4<f32>, weights: vec4<f32>) -> vec3<f32> {
     let n = normalize(world_n);
     if (!kw_PACKED_NORMALMAP()) {
@@ -135,10 +130,10 @@ fn sample_normal_world(uv_albedo: vec2<f32>, world_n: vec3<f32>, world_t: vec4<f
     }
     let n01 = textureSample(_PackedNormalMap01, _PackedNormalMap01_sampler, uv_albedo);
     let n23 = textureSample(_PackedNormalMap23, _PackedNormalMap23_sampler, uv_albedo);
-    let n0 = unpack_normal_xy(n01.xy, mat._NormalScale0);
-    let n1 = unpack_normal_xy(n01.zw, mat._NormalScale1);
-    let n2 = unpack_normal_xy(n23.xy, mat._NormalScale2);
-    let n3 = unpack_normal_xy(n23.zw, mat._NormalScale3);
+    let n0 = psamp::unpack_packed_normal_xy(n01.xy, mat._NormalScale0);
+    let n1 = psamp::unpack_packed_normal_xy(n01.zw, mat._NormalScale1);
+    let n2 = psamp::unpack_packed_normal_xy(n23.xy, mat._NormalScale2);
+    let n3 = psamp::unpack_packed_normal_xy(n23.zw, mat._NormalScale3);
     let blended = n0 * weights.x + n1 * weights.y + n2 * weights.z + n3 * weights.w;
     let tbn = pnorm::orthonormal_tbn(n, normalize(world_t));
     return normalize(tbn * normalize(blended));
@@ -194,7 +189,7 @@ fn sample_surface(uv0: vec2<f32>, world_n: vec3<f32>, world_t: vec4<f32>) -> Sur
     let spec = sample_specular(uv_albedo, weights);
     let f0 = clamp(spec.rgb, vec3<f32>(0.0), vec3<f32>(1.0));
     let smoothness = clamp(spec.a, 0.0, 1.0);
-    let roughness = clamp(1.0 - smoothness, 0.0, 1.0);
+    let roughness = psamp::roughness_from_smoothness(smoothness);
     let one_minus_reflectivity = 1.0 - max(max(f0.r, f0.g), f0.b);
 
     return SurfaceData(

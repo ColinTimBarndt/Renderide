@@ -11,9 +11,12 @@
 
 
 #import renderide::material::variant_bits as vb
+#import renderide::material::color as mcolor
 #import renderide::mesh::vertex as mv
 #import renderide::pbs::normal as pnorm
 #import renderide::pbs::lighting as plight
+#import renderide::pbs::sampling as psamp
+#import renderide::pbs::splat as splat
 #import renderide::pbs::surface as psurf
 #import renderide::core::uv as uvu
 #import renderide::core::normal_decode as nd
@@ -125,15 +128,9 @@ fn sample_surface(uv0: vec2<f32>, world_n: vec3<f32>, world_t: vec4<f32>) -> Sur
         uvu::apply_st(uv0, mat._ColorMask_ST);
 
     let mask = textureSample(_ColorMask, _ColorMask_sampler, uv_mask);
-    let weight_inv = max(mask.r + mask.g + mask.b + mask.a, 1e-5);
-    let weight = clamp(1.0 / weight_inv, 0.0, 1.0);
+    let weights = splat::color_mask_weights(mask);
 
-    var c =
-        mat._Color * mask.r
-        + mat._Color1 * mask.g
-        + mat._Color2 * mask.b
-        + mat._Color3 * mask.a;
-    c = c * weight;
+    var c = mcolor::blend4_vec4(mat._Color, mat._Color1, mat._Color2, mat._Color3, weights);
     if (kw_ALBEDOTEX()) {
         c = c * textureSample(_MainTex, _MainTex_sampler, uv_main);
     }
@@ -146,19 +143,20 @@ fn sample_surface(uv0: vec2<f32>, world_n: vec3<f32>, world_t: vec4<f32>) -> Sur
         smoothness = m.a;
     }
     metallic = clamp(metallic, 0.0, 1.0);
-    let roughness = clamp(1.0 - smoothness, 0.0, 1.0);
+    let roughness = psamp::roughness_from_smoothness(smoothness);
 
     var occlusion = 1.0;
     if (kw_OCCLUSION()) {
         occlusion = textureSample(_OcclusionMap, _OcclusionMap_sampler, uv_main).r;
     }
 
-    var emission =
-        mat._EmissionColor * mask.r
-        + mat._EmissionColor1 * mask.g
-        + mat._EmissionColor2 * mask.b
-        + mat._EmissionColor3 * mask.a;
-    emission = emission * weight;
+    var emission = mcolor::blend4_vec4(
+        mat._EmissionColor,
+        mat._EmissionColor1,
+        mat._EmissionColor2,
+        mat._EmissionColor3,
+        weights,
+    );
     if (kw_EMISSIONTEX()) {
         emission = emission * textureSample(_EmissionMap, _EmissionMap_sampler, uv_main);
     }

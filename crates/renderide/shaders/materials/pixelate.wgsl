@@ -8,10 +8,9 @@
 
 #import renderide::post::filter_math as fm
 #import renderide::post::filter_vertex as fv
-#import renderide::frame::globals as rg
+#import renderide::post::filter_common as fc
 #import renderide::frame::grab_pass as gp
 #import renderide::material::variant_bits as vb
-#import renderide::ui::rect_clip as uirc
 #import renderide::core::uv as uvu
 
 struct FiltersPixelateMaterial {
@@ -82,15 +81,13 @@ fn vs_main(
 //#pass forward_filter
 @fragment
 fn fs_main(vout: VertexOutput) -> @location(0) vec4<f32> {
-    if (uirc::should_clip_rect_kw(vout.obj_xy, mat._Rect, kw_RECTCLIP())) {
-        discard;
-    }
+    fc::discard_rect_if_enabled(vout.obj_xy, mat._Rect, kw_RECTCLIP());
 
     var resolution = max(mat._Resolution.xy, vec2<f32>(1.0));
     if (kw_RESOLUTION_TEX()) {
         let texel_scale = textureSample(_ResolutionTex, _ResolutionTex_sampler, uvu::apply_st(vout.primary_uv, mat._ResolutionTex_ST)).rg;
         resolution = max(mat._Resolution.xy * texel_scale, vec2<f32>(1.0));
     }
-    let uv = fm::safe_div_vec2(round(gp::frag_screen_uv(vout.clip_pos) * resolution), resolution);
-    return rg::retain_globals_additive(gp::sample_scene_color(uv, vout.view_layer));
+    let uv = fm::safe_div_vec2(round(fc::screen_uv(vout.clip_pos) * resolution), resolution);
+    return fc::retain_globals(gp::sample_scene_color(uv, vout.view_layer));
 }

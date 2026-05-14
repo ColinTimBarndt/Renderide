@@ -11,12 +11,11 @@
 
 
 #import renderide::mesh::vertex as mv
-#import renderide::pbs::normal as pnorm
 #import renderide::pbs::lighting as plight
+#import renderide::pbs::sampling as psamp
 #import renderide::pbs::surface as psurf
 #import renderide::material::variant_bits as vb
 #import renderide::core::uv as uvu
-#import renderide::core::normal_decode as nd
 
 /// Material uniforms for `PBSDualSidedTransparentSpecular`.
 struct PbsDualSidedTransparentSpecularMaterial {
@@ -82,18 +81,17 @@ struct SurfaceData {
 
 /// Sample tangent-space normal and place it in the fragment's visible-side world frame.
 fn sample_normal_world(uv_main: vec2<f32>, world_n: vec3<f32>, world_t: vec4<f32>, front_facing: bool) -> vec3<f32> {
-    let tbn = pnorm::orthonormal_tbn(world_n, world_t);
-    var ts_n = vec3<f32>(0.0, 0.0, 1.0);
-    if (kw_NORMALMAP()) {
-        ts_n = nd::decode_ts_normal_with_placeholder_sample(
-            textureSample(_NormalMap, _NormalMap_sampler, uv_main),
-            mat._NormalScale,
-        );
-    }
-    if (!front_facing) {
-        ts_n.z = -ts_n.z;
-    }
-    return normalize(tbn * ts_n);
+    return psamp::sample_optional_two_sided_world_normal(
+        kw_NORMALMAP(),
+        _NormalMap,
+        _NormalMap_sampler,
+        uv_main,
+        0.0,
+        mat._NormalScale,
+        world_n,
+        world_t,
+        front_facing,
+    );
 }
 
 /// Resolve the [`SurfaceData`] for a fragment, mirroring Unity's `surf` for `PBSDualSidedTransparentSpecular`.
@@ -123,7 +121,7 @@ fn sample_surface(
     }
     let f0 = clamp(spec.rgb, vec3<f32>(0.0), vec3<f32>(1.0));
     let smoothness = clamp(spec.a, 0.0, 1.0);
-    let roughness = clamp(1.0 - smoothness, 0.0, 1.0);
+    let roughness = psamp::roughness_from_smoothness(smoothness);
     let one_minus_reflectivity = 1.0 - max(max(f0.r, f0.g), f0.b);
 
     var occlusion = 1.0;

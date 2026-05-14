@@ -5,10 +5,8 @@
 //! discards fragments outside the object-space `_Rect` rectangle.
 
 #import renderide::post::filter_vertex as fv
-#import renderide::frame::globals as rg
-#import renderide::frame::grab_pass as gp
+#import renderide::post::filter_common as fc
 #import renderide::material::variant_bits as vb
-#import renderide::ui::rect_clip as uirc
 
 struct FiltersChannelMatrixMaterial {
     _LevelsR: vec4<f32>,
@@ -54,15 +52,13 @@ fn vs_main(
 //#pass forward_filter
 @fragment
 fn fs_main(in: fv::RectVertexOutput) -> @location(0) vec4<f32> {
-    if (uirc::should_clip_rect_kw(in.obj_xy, mat._Rect, kw_RECTCLIP())) {
-        discard;
-    }
-    let c = gp::sample_scene_color(gp::frag_screen_uv(in.clip_pos), in.view_layer);
+    fc::discard_rect_if_enabled(in.obj_xy, mat._Rect, kw_RECTCLIP());
+    let c = fc::sample_scene_color_at_clip(in.clip_pos, in.view_layer);
     let remapped = vec3<f32>(
         dot(mat._LevelsR.xyz, c.rgb) + mat._LevelsR.w,
         dot(mat._LevelsG.xyz, c.rgb) + mat._LevelsG.w,
         dot(mat._LevelsB.xyz, c.rgb) + mat._LevelsB.w,
     );
     let filtered = clamp(remapped, mat._ClampMin.xyz, mat._ClampMax.xyz);
-    return rg::retain_globals_additive(vec4<f32>(filtered, c.a));
+    return fc::retain_globals(vec4<f32>(filtered, c.a));
 }

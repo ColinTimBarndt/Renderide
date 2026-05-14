@@ -47,6 +47,33 @@ fn sample_optional_world_normal(
     return sample_world_normal(tex, samp, uv, lod_bias, scale, world_n, world_t);
 }
 
+fn sample_optional_two_sided_world_normal(
+    enabled: bool,
+    tex: texture_2d<f32>,
+    samp: sampler,
+    uv: vec2<f32>,
+    lod_bias: f32,
+    scale: f32,
+    world_n: vec3<f32>,
+    world_t: vec4<f32>,
+    front_facing: bool,
+) -> vec3<f32> {
+    if (!enabled) {
+        var n = normalize(world_n);
+        if (!front_facing) {
+            n = -n;
+        }
+        return n;
+    }
+
+    let tbn = pnorm::orthonormal_tbn(world_n, world_t);
+    var ts_n = sample_tangent_normal(tex, samp, uv, lod_bias, scale);
+    if (!front_facing) {
+        ts_n.z = -ts_n.z;
+    }
+    return normalize(tbn * ts_n);
+}
+
 fn blend_detail_tangent_normal(base: vec3<f32>, detail: vec3<f32>, detail_mask: f32) -> vec3<f32> {
     return normalize(vec3<f32>(base.xy + detail.xy * detail_mask, base.z));
 }

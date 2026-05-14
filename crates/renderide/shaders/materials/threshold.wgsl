@@ -6,12 +6,10 @@
 //! fragments outside the object-space rectangle.
 
 
-#import renderide::frame::globals as rg
-#import renderide::frame::grab_pass as gp
+#import renderide::post::filter_common as fc
 #import renderide::mesh::vertex as mv
 #import renderide::draw::per_draw as pd
 #import renderide::material::variant_bits as vb
-#import renderide::ui::rect_clip as uirc
 
 struct FiltersThresholdMaterial {
     _Threshold: f32,
@@ -66,12 +64,10 @@ fn fs_main(
     @location(0) obj_xy: vec2<f32>,
     @location(1) @interpolate(flat) view_layer: u32,
 ) -> @location(0) vec4<f32> {
-    if (uirc::should_clip_rect_kw(obj_xy, mat._Rect, threshold_kw(THRESHOLD_KW_RECTCLIP))) {
-        discard;
-    }
+    fc::discard_rect_if_enabled(obj_xy, mat._Rect, threshold_kw(THRESHOLD_KW_RECTCLIP));
 
-    let c = gp::sample_scene_color(gp::frag_screen_uv(frag_pos), view_layer);
+    let c = fc::sample_scene_color_at_clip(frag_pos, view_layer);
     let transition = max(abs(mat._Transition), 1e-6);
     let filtered = clamp(((c.rgb - vec3<f32>(mat._Threshold)) / transition) + vec3<f32>(mat._Transition * 0.5), vec3<f32>(0.0), vec3<f32>(1.0));
-    return rg::retain_globals_additive(vec4<f32>(filtered, c.a));
+    return fc::retain_globals(vec4<f32>(filtered, c.a));
 }

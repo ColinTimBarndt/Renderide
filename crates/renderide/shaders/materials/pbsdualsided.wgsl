@@ -10,11 +10,10 @@
 
 #import renderide::material::variant_bits as vb
 #import renderide::mesh::vertex as mv
-#import renderide::pbs::normal as pnorm
 #import renderide::pbs::lighting as plight
+#import renderide::pbs::sampling as psamp
 #import renderide::pbs::surface as psurf
 #import renderide::core::uv as uvu
-#import renderide::core::normal_decode as nd
 
 struct PbsDualSidedMaterial {
     _Color: vec4<f32>,
@@ -64,23 +63,17 @@ fn pbs_kw(mask: u32) -> bool {
 }
 
 fn sample_normal_world(uv_main: vec2<f32>, world_n: vec3<f32>, world_t: vec4<f32>, front_facing: bool) -> vec3<f32> {
-    if (!pbs_kw(PBSDUALSIDED_KW_NORMALMAP)) {
-        var n = normalize(world_n);
-        if (!front_facing) {
-            n = -n;
-        }
-        return n;
-    }
-
-    let tbn = pnorm::orthonormal_tbn(world_n, world_t);
-    var ts_n = nd::decode_ts_normal_with_placeholder_sample(
-        textureSample(_NormalMap, _NormalMap_sampler, uv_main),
+    return psamp::sample_optional_two_sided_world_normal(
+        pbs_kw(PBSDUALSIDED_KW_NORMALMAP),
+        _NormalMap,
+        _NormalMap_sampler,
+        uv_main,
+        0.0,
         mat._NormalScale,
+        world_n,
+        world_t,
+        front_facing,
     );
-    if (!front_facing) {
-        ts_n.z = -ts_n.z;
-    }
-    return normalize(tbn * ts_n);
 }
 
 fn sample_surface(
@@ -115,7 +108,7 @@ fn sample_surface(
         smoothness = smoothness * vertex_color.a;
     }
     metallic = clamp(metallic, 0.0, 1.0);
-    let roughness = clamp(1.0 - smoothness, 0.0, 1.0);
+    let roughness = psamp::roughness_from_smoothness(smoothness);
 
     var occlusion = 1.0;
     if (pbs_kw(PBSDUALSIDED_KW_OCCLUSION)) {

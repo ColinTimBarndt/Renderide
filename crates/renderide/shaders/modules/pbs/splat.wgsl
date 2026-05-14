@@ -9,7 +9,8 @@ fn normalize_weights(weights: vec4<f32>) -> vec4<f32> {
 }
 
 fn color_mask_weights(mask: vec4<f32>) -> vec4<f32> {
-    return color::normalized_rgba_weights(mask, 1e-5);
+    let sum = max(color::rgba_weight_sum(mask), 1e-5);
+    return mask * clamp(1.0 / sum, 0.0, 1.0);
 }
 
 fn height_blended_weights(weights: vec4<f32>, heights: vec4<f32>, transition_range: f32) -> vec4<f32> {

@@ -111,6 +111,7 @@ fn material_roots_do_not_redeclare_shared_helpers() -> io::Result<()> {
             "fn alpha_over",
             "fn inside_rect",
             "fn outside_rect",
+            "fn unpack_normal_xy",
             "fn roughness_from_smoothness",
             "fn safe_normalize",
             "fn shade_distance_field",
@@ -127,6 +128,71 @@ fn material_roots_do_not_redeclare_shared_helpers() -> io::Result<()> {
         "material roots should import shared helper modules instead of redeclaring them:\n  {}",
         offenders.join("\n  ")
     );
+    Ok(())
+}
+
+#[test]
+fn grab_filter_roots_use_shared_filter_common_helpers() -> io::Result<()> {
+    for material in [
+        "blur.wgsl",
+        "channelmatrix.wgsl",
+        "gamma.wgsl",
+        "getdepth.wgsl",
+        "grayscale.wgsl",
+        "hsv.wgsl",
+        "invert.wgsl",
+        "lut.wgsl",
+        "lut_perobject.wgsl",
+        "pixelate.wgsl",
+        "posterize.wgsl",
+        "refract.wgsl",
+        "threshold.wgsl",
+    ] {
+        let src = material_source(material)?;
+        assert!(
+            src.contains("renderide::post::filter_common as fc"),
+            "{material} must import the shared filter_common module"
+        );
+        for forbidden in [
+            "gp::sample_scene_color(gp::frag_screen_uv",
+            "uirc::should_clip_rect_kw",
+            "rg::retain_globals_additive",
+        ] {
+            assert!(
+                !src.contains(forbidden),
+                "{material} must delegate `{forbidden}` through filter_common"
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn refraction_filter_roots_use_shared_refraction_helpers() -> io::Result<()> {
+    for material in ["blur.wgsl", "refract.wgsl"] {
+        let src = material_source(material)?;
+        assert!(
+            src.contains("renderide::post::filter_refraction as fr"),
+            "{material} must import the shared filter_refraction module"
+        );
+        for forbidden in [
+            "nd::decode_ts_normal_with_placeholder_sample",
+            "pnorm::orthonormal_tbn",
+        ] {
+            assert!(
+                !src.contains(forbidden),
+                "{material} must delegate `{forbidden}` through filter_refraction"
+            );
+        }
+    }
+
+    let refract = material_source("refract.wgsl")?;
+    for forbidden in ["fn refract_offset", "fn refracted_screen_uv"] {
+        assert!(
+            !refract.contains(forbidden),
+            "refract.wgsl must delegate `{forbidden}` through filter_refraction"
+        );
+    }
     Ok(())
 }
 

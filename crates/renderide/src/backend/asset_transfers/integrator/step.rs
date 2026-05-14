@@ -160,6 +160,7 @@ fn step_point_render_buffer_task(
         .catalogs
         .point_render_buffer_uploads
         .insert(asset_id, upload);
+    logger::trace!("point render buffer {asset_id}: integrated placeholder upload count={count}");
     if let Some(ipc) = ipc.as_deref_mut() {
         let ack_queued = ipc.send_background_reliable(RendererCommand::PointRenderBufferConsumed(
             PointRenderBufferConsumed { asset_id },
@@ -186,11 +187,17 @@ fn step_trail_render_buffer_task(
         .catalogs
         .trail_render_buffer_uploads
         .insert(asset_id, upload);
+    logger::trace!(
+        "trail render buffer {asset_id}: integrated placeholder upload trails={trails_count} points={trail_point_count}"
+    );
     if let Some(ipc) = ipc.as_deref_mut() {
         let ack_queued = ipc.send_background_reliable(RendererCommand::TrailRenderBufferConsumed(
             TrailRenderBufferConsumed { asset_id },
         ));
         if !ack_queued {
+            logger::warn!(
+                "trail render buffer {asset_id}: failed to enqueue reliable consumed ack"
+            );
         }
     }
     StepResult::Done
