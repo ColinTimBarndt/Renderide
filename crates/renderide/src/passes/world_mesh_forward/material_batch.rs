@@ -8,22 +8,60 @@ use std::sync::Arc;
 
 use rayon::prelude::*;
 
+use crate::diagnostics::log_throttle::LogThrottle;
 use crate::materials::ShaderPermutation;
+use crate::materials::embedded::EmbeddedMaterialBindError;
 use crate::materials::{
     EmbeddedMaterialBindResources, EmbeddedMaterialBindShader, EmbeddedTexturePools,
 };
 use crate::materials::{
-    MaterialBlendMode, MaterialPipelineDesc, MaterialPipelineSet, MaterialPipelineVariantSpec,
-    MaterialRegistry, MaterialRenderState, RasterFrontFace, RasterPipelineKind,
-    RasterPrimitiveTopology,
+    MaterialBlendMode, MaterialPipelineDesc, MaterialPipelineResolution, MaterialPipelineSet,
+    MaterialPipelineVariantSpec, MaterialRegistry, MaterialRenderState, RasterFrontFace,
+    RasterPipelineKind, RasterPrimitiveTopology,
 };
 use crate::passes::WorldMeshForwardEncodeRefs;
 use crate::render_graph::frame_upload_batch::GraphUploadSink;
 use crate::world_mesh::draw_prep::WorldMeshDrawItem;
 
+/// Throttles repeated embedded-bind failures so a single bad material cannot flood logs.
+static EMBEDDED_MATERIAL_BIND_FAILURE_LOG: LogThrottle = LogThrottle::new();
+
 /// Inclusive `(first_draw_idx, last_draw_idx)` span over the sorted world-mesh draw list
 /// identifying one contiguous material batch run.
 pub(crate) type MaterialBatchBoundary = (usize, usize);
+
+/// Kind-only summary of the group-1 binding carried by a material packet.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum MaterialGroup1BindingKind {
+    /// Empty material bind group used by the Null fallback pipeline.
+    Empty,
+    /// Reflected embedded material bind group used by embedded raster pipelines.
+    Embedded,
+}
+
+/// Explicit group-1 binding state for one world-mesh material packet.
+#[derive(Clone)]
+pub(crate) enum MaterialGroup1Binding {
+    /// Bind the shared empty material bind group.
+    Empty,
+    /// Bind an embedded material group and optional uniform dynamic offset.
+    Embedded {
+        /// Reflected bind group matching the selected embedded pipeline layout.
+        bind_group: Arc<wgpu::BindGroup>,
+        /// Dynamic offset into the material uniform arena, when the material block is dynamic.
+        uniform_dynamic_offset: Option<u32>,
+    },
+}
+
+impl MaterialGroup1Binding {
+    /// Returns the kind-only binding identity for validation and tests.
+    fn kind(&self) -> MaterialGroup1BindingKind {
+        match self {
+            Self::Empty => MaterialGroup1BindingKind::Empty,
+            Self::Embedded { .. } => MaterialGroup1BindingKind::Embedded,
+        }
+    }
+}
 
 /// One resolved per-batch draw packet covering a contiguous range of sorted draws with the same
 /// [`crate::world_mesh::MaterialDrawBatchKey`].
@@ -38,10 +76,10 @@ pub(crate) struct MaterialBatchPacket {
     pub last_draw_idx: usize,
     /// Exact pipeline variant requested for this batch.
     pub(crate) pipeline_key: PipelineVariantKey,
-    /// Resolved `@group(1)` bind group for this batch's material, or `None` for the empty fallback.
-    pub bind_group: Option<Arc<wgpu::BindGroup>>,
-    /// Dynamic offset for the material uniform arena, when this batch's bind group has one.
-    pub material_uniform_dynamic_offset: Option<u32>,
+    /// Actual pipeline kind selected for this packet, or [`None`] when the batch is skipped.
+    pub(crate) resolved_pipeline_kind: Option<RasterPipelineKind>,
+    /// Explicit `@group(1)` binding that matches [`Self::resolved_pipeline_kind`].
+    pub(crate) group1_binding: MaterialGroup1Binding,
     /// Resolved pipeline set for this batch, or `None` when the pipeline is unavailable (skip draws).
     pub pipelines: Option<MaterialPipelineSet>,
 }
@@ -123,6 +161,17 @@ impl PipelineVariantKey {
             depth_stencil_format: self.depth_stencil_format,
             sample_count: self.sample_count,
             multiview_mask: self.multiview_mask,
+        }
+    }
+
+    /// Rehydrates the material pipeline variant selectors used by [`MaterialRegistry`].
+    pub(crate) fn variant_spec(self) -> MaterialPipelineVariantSpec {
+        MaterialPipelineVariantSpec {
+            permutation: self.shader_perm,
+            blend_mode: self.blend_mode,
+            render_state: self.render_state,
+            front_face: self.front_face,
+            primitive_topology: self.primitive_topology,
         }
     }
 
@@ -236,50 +285,87 @@ impl<'a> MaterialDrawResolver<'a> {
             pipeline_key.front_face = pipeline_key.front_face.flipped();
         }
 
-        let (bind_group, material_uniform_dynamic_offset) = self.resolve_embedded_bind_group(item);
-        let pipeline_kind =
-            pipeline_kind_for_material_packet(&item.batch_key.pipeline, bind_group.is_some());
-        let pipelines = self.resolve_pipelines(&pipeline_kind, pipeline_key);
+        let resolved = self.resolve_pipeline_and_group1(item, pipeline_key);
+
+        if let Some((resolution, group1_binding)) = resolved {
+            debug_assert!(material_group1_binding_matches_pipeline(
+                group1_binding.kind(),
+                &resolution.kind
+            ));
+            return MaterialBatchPacket {
+                first_draw_idx: first,
+                last_draw_idx: last,
+                pipeline_key,
+                resolved_pipeline_kind: Some(resolution.kind),
+                group1_binding,
+                pipelines: Some(resolution.pipelines),
+            };
+        }
 
         MaterialBatchPacket {
             first_draw_idx: first,
             last_draw_idx: last,
             pipeline_key,
-            bind_group,
-            material_uniform_dynamic_offset,
-            pipelines,
+            resolved_pipeline_kind: None,
+            group1_binding: MaterialGroup1Binding::Empty,
+            pipelines: None,
         }
     }
 
-    /// Resolves the material pipeline set for one batch.
-    fn resolve_pipelines(
+    /// Resolves the material pipeline and matching group-1 binding for one batch.
+    fn resolve_pipeline_and_group1(
+        &self,
+        item: &WorldMeshDrawItem,
+        pipeline_key: PipelineVariantKey,
+    ) -> Option<(MaterialPipelineResolution, MaterialGroup1Binding)> {
+        let resolution =
+            self.resolve_pipeline_resolution(&item.batch_key.pipeline, pipeline_key)?;
+        match &resolution.kind {
+            RasterPipelineKind::Null => Some((resolution, MaterialGroup1Binding::Empty)),
+            RasterPipelineKind::EmbeddedStem(stem) => {
+                match self.resolve_embedded_group1_binding(item, stem.as_ref()) {
+                    Ok(group1_binding) => Some((resolution, group1_binding)),
+                    Err(error) => {
+                        let fallback = self.resolve_null_fallback_pipeline(pipeline_key);
+                        self.log_embedded_bind_failure(
+                            item,
+                            stem.as_ref(),
+                            &error,
+                            fallback.is_some(),
+                        );
+                        fallback.map(|fallback_resolution| {
+                            (fallback_resolution, MaterialGroup1Binding::Empty)
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+    /// Resolves the material pipeline set and concrete raster kind for one batch.
+    fn resolve_pipeline_resolution(
         &self,
         pipeline_kind: &RasterPipelineKind,
         pipeline_key: PipelineVariantKey,
-    ) -> Option<MaterialPipelineSet> {
+    ) -> Option<MaterialPipelineResolution> {
         let registry = self.registry?;
 
         let pass_desc = pipeline_key.pass_desc();
-        let pipelines = registry.pipeline_for_resolved_kind(
+        let resolution = registry.pipeline_for_resolved_kind(
             pipeline_key.shader_asset_id,
             pipeline_kind,
             &pass_desc,
-            MaterialPipelineVariantSpec {
-                permutation: pipeline_key.shader_perm,
-                blend_mode: pipeline_key.blend_mode,
-                render_state: pipeline_key.render_state,
-                front_face: pipeline_key.front_face,
-                primitive_topology: pipeline_key.primitive_topology,
-            },
+            pipeline_key.variant_spec(),
         );
 
-        match pipelines {
-            Some(p) if !p.is_empty() => Some(p),
-            Some(_) => {
+        match resolution {
+            Some(resolution) if !resolution.pipelines.is_empty() => Some(resolution),
+            Some(resolution) => {
                 logger::trace!(
-                    "WorldMeshForward: empty pipeline for shader {:?} kind {:?}, skipping batch",
+                    "WorldMeshForward: empty pipeline for shader {:?} requested_kind {:?} resolved_kind {:?}, skipping batch",
                     pipeline_key.shader_asset_id,
-                    pipeline_kind
+                    pipeline_kind,
+                    resolution.kind
                 );
                 None
             }
@@ -294,35 +380,53 @@ impl<'a> MaterialDrawResolver<'a> {
         }
     }
 
-    /// Resolves the embedded material bind group for one batch when the pipeline is embedded.
-    fn resolve_embedded_bind_group(
+    /// Resolves a ready Null fallback pipeline for a batch.
+    fn resolve_null_fallback_pipeline(
+        &self,
+        pipeline_key: PipelineVariantKey,
+    ) -> Option<MaterialPipelineResolution> {
+        let registry = self.registry?;
+        let pass_desc = pipeline_key.pass_desc();
+        let resolution =
+            registry.null_pipeline_for_variant(&pass_desc, pipeline_key.variant_spec());
+        match resolution {
+            Some(resolution) if !resolution.pipelines.is_empty() => Some(resolution),
+            Some(_) => {
+                logger::trace!(
+                    "WorldMeshForward: empty Null fallback pipeline for shader {:?}, skipping batch",
+                    pipeline_key.shader_asset_id
+                );
+                None
+            }
+            None => {
+                logger::trace!(
+                    "WorldMeshForward: Null fallback pipeline unavailable for shader {:?}, skipping batch",
+                    pipeline_key.shader_asset_id
+                );
+                None
+            }
+        }
+    }
+
+    /// Resolves the embedded material bind group for an embedded pipeline stem.
+    fn resolve_embedded_group1_binding(
         &self,
         item: &WorldMeshDrawItem,
-    ) -> (Option<Arc<wgpu::BindGroup>>, Option<u32>) {
+        stem: &str,
+    ) -> Result<MaterialGroup1Binding, EmbeddedMaterialBindError> {
         let batch_key = &item.batch_key;
-        let RasterPipelineKind::EmbeddedStem(stem) = &batch_key.pipeline else {
-            return (None, None);
-        };
-
         let Some(bind) = self.embedded_bind else {
-            logger::warn!(
-                "WorldMeshForward: embedded material bind resources unavailable; \
-                 falling back to Null pipeline for shader_asset_id={} material_asset_id={} \
-                 property_block_slot0={:?} stem={}",
-                batch_key.shader_asset_id,
-                item.lookup_ids.material_asset_id,
-                item.lookup_ids.mesh_property_block_slot0,
-                stem.as_ref()
-            );
-            return (None, None);
+            return Err(EmbeddedMaterialBindError::from(
+                "embedded material bind resources unavailable",
+            ));
         };
 
         let shader_variant_bits = self
             .registry
             .and_then(|registry| registry.variant_bits_for_shader_asset(batch_key.shader_asset_id));
-        match bind.embedded_material_bind_group_with_cache_key(
+        let (_, bind_group) = bind.embedded_material_bind_group_with_cache_key(
             EmbeddedMaterialBindShader {
-                stem: stem.as_ref(),
+                stem,
                 shader_variant_bits,
             },
             self.uploads,
@@ -330,36 +434,59 @@ impl<'a> MaterialDrawResolver<'a> {
             &self.pools,
             item.lookup_ids,
             self.offscreen_write_render_texture_asset_id,
-        ) {
-            Ok((_, bg)) => (Some(bg.bind_group), bg.uniform_dynamic_offset),
-            Err(e) => {
-                logger::warn!(
-                    "WorldMeshForward: embedded material bind failed; \
-                     falling back to Null pipeline for shader_asset_id={} material_asset_id={} \
-                     property_block_slot0={:?} stem={} error={}",
-                    batch_key.shader_asset_id,
-                    item.lookup_ids.material_asset_id,
-                    item.lookup_ids.mesh_property_block_slot0,
-                    stem.as_ref(),
-                    e
-                );
-                (None, None)
-            }
-        }
+        )?;
+        Ok(MaterialGroup1Binding::Embedded {
+            bind_group: bind_group.bind_group,
+            uniform_dynamic_offset: bind_group.uniform_dynamic_offset,
+        })
+    }
+
+    /// Emits a throttled diagnostic for embedded bind failures and the selected fallback action.
+    fn log_embedded_bind_failure(
+        &self,
+        item: &WorldMeshDrawItem,
+        stem: &str,
+        error: &EmbeddedMaterialBindError,
+        fallback_ready: bool,
+    ) {
+        let Some(occurrence) = EMBEDDED_MATERIAL_BIND_FAILURE_LOG.should_log(8, 128) else {
+            return;
+        };
+        let action = if fallback_ready {
+            "using Null fallback"
+        } else {
+            "skipping batch until fallback is ready"
+        };
+        logger::warn!(
+            "WorldMeshForward: embedded material bind group failed \
+             (shader_asset_id={}, material_asset_id={}, slot_property_block={:?}, \
+             renderer_property_block={:?}, stem={}, occurrence={}); {}: {}",
+            item.batch_key.shader_asset_id,
+            item.lookup_ids.material_asset_id,
+            item.lookup_ids.mesh_property_block_slot0,
+            item.lookup_ids.mesh_renderer_property_block_id,
+            stem,
+            occurrence,
+            action,
+            error
+        );
     }
 }
 
-/// Selects the pipeline family that is safe for the resolved material bind-group state.
-fn pipeline_kind_for_material_packet(
-    batch_pipeline: &RasterPipelineKind,
-    embedded_bind_group_resolved: bool,
-) -> RasterPipelineKind {
-    match batch_pipeline {
-        RasterPipelineKind::EmbeddedStem(stem) if embedded_bind_group_resolved => {
-            RasterPipelineKind::EmbeddedStem(stem.clone())
-        }
-        RasterPipelineKind::EmbeddedStem(_) | RasterPipelineKind::Null => RasterPipelineKind::Null,
+/// Returns the group-1 binding kind required by a concrete raster pipeline kind.
+fn required_group1_binding_kind(kind: &RasterPipelineKind) -> MaterialGroup1BindingKind {
+    match kind {
+        RasterPipelineKind::Null => MaterialGroup1BindingKind::Empty,
+        RasterPipelineKind::EmbeddedStem(_) => MaterialGroup1BindingKind::Embedded,
     }
+}
+
+/// Returns whether a group-1 binding kind is layout-compatible with a raster pipeline kind.
+fn material_group1_binding_matches_pipeline(
+    binding_kind: MaterialGroup1BindingKind,
+    pipeline_kind: &RasterPipelineKind,
+) -> bool {
+    binding_kind == required_group1_binding_kind(pipeline_kind)
 }
 
 /// Walks `draws` once and writes `(first_idx, last_idx)` runs of identical material batch keys
@@ -460,46 +587,52 @@ mod tests {
         assert_ne!(a, b);
     }
 
-    /// Embedded packets keep their embedded pipeline only when group 1 was resolved.
+    /// Null pipelines require the shared empty material bind group.
     #[test]
-    fn material_packet_keeps_embedded_pipeline_with_resolved_bind_group() {
-        let pipeline = embedded_pipeline("xstoon2.0_default");
-
+    fn null_pipeline_requires_empty_group1_binding() {
         assert_eq!(
-            pipeline_kind_for_material_packet(&pipeline, true),
-            embedded_pipeline("xstoon2.0_default")
+            required_group1_binding_kind(&RasterPipelineKind::Null),
+            MaterialGroup1BindingKind::Empty
         );
+        assert!(material_group1_binding_matches_pipeline(
+            MaterialGroup1BindingKind::Empty,
+            &RasterPipelineKind::Null
+        ));
     }
 
-    /// Embedded packets use the null pipeline when group 1 cannot match the embedded layout.
+    /// Embedded pipelines require the reflected embedded material bind group.
     #[test]
-    fn material_packet_falls_back_to_null_when_embedded_bind_group_is_missing() {
-        let pipeline = embedded_pipeline("xstoon2.0_default");
-
+    fn embedded_pipeline_requires_embedded_group1_binding() {
+        let kind = embedded_pipeline("xstoon2.0_default");
         assert_eq!(
-            pipeline_kind_for_material_packet(&pipeline, false),
-            RasterPipelineKind::Null
+            required_group1_binding_kind(&kind),
+            MaterialGroup1BindingKind::Embedded
         );
+        assert!(material_group1_binding_matches_pipeline(
+            MaterialGroup1BindingKind::Embedded,
+            &kind
+        ));
     }
 
-    /// Null packets can safely keep using the empty material bind group.
+    /// The empty material bind group is never layout-compatible with embedded pipelines.
     #[test]
-    fn material_packet_keeps_null_pipeline_with_empty_material_group() {
-        assert_eq!(
-            pipeline_kind_for_material_packet(&RasterPipelineKind::Null, false),
-            RasterPipelineKind::Null
-        );
+    fn empty_group1_binding_does_not_match_embedded_pipeline() {
+        let kind = embedded_pipeline("xstoon2.0_default");
+        assert!(!material_group1_binding_matches_pipeline(
+            MaterialGroup1BindingKind::Empty,
+            &kind
+        ));
     }
 
-    /// Packet selection honors the draw batch snapshot instead of a later router route.
+    /// A draw batch snapshot that stayed Null still requires empty group 1 even if routing changes.
     #[test]
-    fn material_packet_uses_draw_batch_pipeline_snapshot() {
+    fn stale_draw_batch_pipeline_requires_empty_group1_even_if_current_route_is_embedded() {
         let current_router_route = embedded_pipeline("xstoon2.0_default");
         let stale_draw_batch_pipeline = RasterPipelineKind::Null;
 
         assert_eq!(
-            pipeline_kind_for_material_packet(&stale_draw_batch_pipeline, true),
-            RasterPipelineKind::Null
+            required_group1_binding_kind(&stale_draw_batch_pipeline),
+            MaterialGroup1BindingKind::Empty
         );
         assert_ne!(stale_draw_batch_pipeline, current_router_route);
     }
