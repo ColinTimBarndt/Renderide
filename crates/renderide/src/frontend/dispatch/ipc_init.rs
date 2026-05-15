@@ -1,6 +1,6 @@
 //! Pure IPC command routing by [`crate::frontend::InitState`].
 
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::LazyLock};
 
 use crate::frontend::InitState;
 use crate::shared::{
@@ -17,18 +17,15 @@ use super::renderer_command_kind::renderer_command_variant_tag;
 /// The commit suffix is supplied by `build.rs` via the `RENDERIDE_GIT_COMMIT`
 /// rustc env var; an empty value means git was unavailable at build time and
 /// the suffix is omitted.
-const RENDERER_IDENTIFIER: &str = const {
-    if env!("RENDERIDE_GIT_COMMIT").is_empty() {
-        concat!("Renderide ", env!("CARGO_PKG_VERSION"))
+static RENDERER_IDENTIFIER: LazyLock<String> = LazyLock::new(|| {
+    let version = env!("CARGO_PKG_VERSION");
+    let commit = env!("RENDERIDE_GIT_COMMIT");
+    if commit.is_empty() {
+        format!("Renderide {version}")
     } else {
-        concat!(
-            "Renderide ",
-            env!("CARGO_PKG_VERSION"),
-            "-",
-            env!("RENDERIDE_GIT_COMMIT"),
-        )
+        format!("Renderide {version}-{commit}")
     }
-};
+});
 
 /// Renderer capabilities reported during the init handshake.
 ///
@@ -113,7 +110,7 @@ pub(crate) fn build_renderer_init_result(
 ) -> RendererInitResult {
     RendererInitResult {
         actual_output_device: output_device,
-        renderer_identifier: Some(RENDERER_IDENTIFIER.into()),
+        renderer_identifier: Some(Cow::Borrowed(RENDERER_IDENTIFIER.as_str())),
         main_window_handle_ptr: 0,
         stereo_rendering_mode: Some(capabilities.stereo_rendering_mode),
         max_texture_size: capabilities.max_texture_size,
@@ -151,6 +148,8 @@ pub(crate) fn dispatch_ipc_command(
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
     use super::{
         InitDispatchDecision, IpcDispatchEffect, RendererInitCapabilities,
         build_renderer_init_result, dispatch_ipc_command, init_dispatch_decision,
@@ -174,7 +173,10 @@ mod tests {
             },
         );
 
-        assert!(result.renderer_identifier.is_some());
+        assert!(matches!(
+            result.renderer_identifier,
+            Some(Cow::Borrowed(identifier)) if identifier.starts_with("Renderide ")
+        ));
         assert!(!result.supported_texture_formats.is_empty());
         assert_eq!(result.max_texture_size, 4096);
     }
