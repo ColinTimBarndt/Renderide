@@ -70,10 +70,8 @@ fn fur_vertex_main(
     out.world_n = world_n;
     out.world_t = world_t;
     out.main_uv = uvu::apply_st(uv0, main_st);
-    // out.noise_uv = uvu::apply_st(uv0, noise_st);
-    // out.shell_noise_uv = uvu::apply_st(uv0 + world_n.xy * 0.0011 * fur_multiplier, noise_st);
-    out.noise_uv = uv0;
-    out.shell_noise_uv = uv0 + world_n.xy * 0.0011 * fur_multiplier;
+    out.noise_uv = uvu::apply_st(uv0, noise_st);
+    out.shell_noise_uv = uvu::apply_st(uv0 + world_n.xy * 0.0011 * fur_multiplier, noise_st);
     out.fur_multiplier = fur_multiplier;
     out.view_layer = mv::packed_view_layer(instance_index, view_idx);
     out.raw_uv = uv0;

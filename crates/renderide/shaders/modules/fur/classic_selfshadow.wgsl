@@ -14,7 +14,7 @@ struct ClassicSelfShadowMaterial {
     _SpecColor: vec4<f32>,
     _RimColor: vec4<f32>,
     _MainTex_ST: vec4<f32>,
-    _NoiseTex_ST: vec4<f32>, // Not provided by FrooxEngine
+    _NoiseTex_ST: vec4<f32>,
     _ForceGlobal: vec4<f32>,
     _ForceLocal: vec4<f32>,
     _Shininess: f32,
