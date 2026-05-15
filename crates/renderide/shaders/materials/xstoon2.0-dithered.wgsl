@@ -8,7 +8,6 @@
 //#texture_default _RampSelectionMask black
 //#texture_default _Ramp white
 //#texture_default _OcclusionMap white
-//#texture_default _OutlineMask white
 //#texture_default _ThicknessMap white
 //#texture_default _CutoutMask white
 //#texture_default _Matcap black
