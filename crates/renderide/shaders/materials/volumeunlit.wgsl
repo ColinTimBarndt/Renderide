@@ -260,5 +260,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         acc = vec4<f32>(acc.xyz / max(min(1.0, mat._AccumulationCutoff), vol::VOLUME_EPSILON), acc.a);
     }
 
-    return rg::retain_globals_additive(vec4<f32>(acc.xyz, 1.0));
+    let color = vol::clamp_volume_source_rgb(vec4<f32>(acc.xyz, 1.0));
+    return rg::retain_globals_additive(color);
 }

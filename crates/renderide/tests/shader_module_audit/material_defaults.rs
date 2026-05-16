@@ -64,6 +64,7 @@ const EXPECTED_SHADER_DEFAULT_DIRECTIVES: &[(&str, &[&str])] = &[
             "//#mat_default _AccumulationColorTop vec4 0.1 0.1 0.1 0.1",
             "//#mat_default _AccumulationRate float 0.1",
             "//#mat_default _FogEnd float 1e+07",
+            "//#mat_default _FogDensity float 0.1",
             "//#mat_default _GammaCurve float 2.2",
         ],
     ),
@@ -1026,6 +1027,6 @@ fn material_sources_declare_unity_property_defaults() -> io::Result<()> {
             );
         }
     }
-    assert_eq!(directive_count, 453);
+    assert_eq!(directive_count, 454);
     Ok(())
 }

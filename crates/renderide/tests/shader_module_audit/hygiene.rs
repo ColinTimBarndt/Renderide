@@ -132,6 +132,26 @@ fn material_roots_do_not_redeclare_shared_helpers() -> io::Result<()> {
 }
 
 #[test]
+fn volume_material_roots_clamp_emitted_source_rgb() -> io::Result<()> {
+    let volume_box = module_source("material/volume_box.wgsl")?;
+    assert!(
+        volume_box.contains("fn clamp_volume_source_rgb(color: vec4<f32>) -> vec4<f32>")
+            && volume_box.contains("clamp(color.rgb, vec3<f32>(0.0), vec3<f32>(1.0))"),
+        "volume_box must expose a helper that clamps emitted volume source RGB"
+    );
+
+    for material in ["fogboxvolume.wgsl", "volumeunlit.wgsl"] {
+        let src = material_source(material)?;
+        assert!(
+            src.contains("vol::clamp_volume_source_rgb("),
+            "{material} must clamp emitted source RGB before additive retention"
+        );
+    }
+
+    Ok(())
+}
+
+#[test]
 fn alpha_clip_paths_do_not_force_base_mip_sampling() -> io::Result<()> {
     let mut offenders = Vec::new();
     for path in wgsl_files_recursive("shaders")? {
