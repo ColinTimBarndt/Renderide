@@ -22,6 +22,7 @@
 //#mat_default _Color vec4 1.0 1.0 1.0 1.0
 //#mat_default _NormalScale float 1.0
 //#mat_default _TriBlendPower float 4.0
+//#mat_default _Glossiness float 0.5
 
 #import renderide::draw::per_draw as pd
 #import renderide::material::variant_bits as vb
@@ -174,7 +175,7 @@ fn sample_surface(
     if (object_space) {
         if (normal_map) {
             let d = pd::get_draw(view_layer >> 1u);
-            n_world = normalize(mv::model_vector(d, n_world));
+            n_world = mv::world_direction(d, n_world, n_world);
         } else {
             n_world = normalize(world_n);
         }

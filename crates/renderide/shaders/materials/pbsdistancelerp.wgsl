@@ -30,6 +30,7 @@
 //#mat_default _EmissionColorTo vec4 1.5 1.5 1.5 0.0
 //#mat_default _EmissionDistanceFrom float 1.0
 //#mat_default _NormalScale float 1.0
+//#mat_default _Glossiness float 0.5
 
 #import renderide::mesh::vertex as mv
 #import renderide::draw::per_draw as pd
@@ -153,7 +154,7 @@ fn vs_main(
     );
     let displaced_obj = pos.xyz + direction * acc.displace;
     let world_p = d.model * vec4<f32>(displaced_obj, 1.0);
-    let wn = normalize(d.normal_matrix * n.xyz);
+    let wn = mv::world_normal(d, n);
     let wt = mv::world_tangent(d, t);
 #ifdef MULTIVIEW
     let vp = mv::select_view_proj(d, view_idx);

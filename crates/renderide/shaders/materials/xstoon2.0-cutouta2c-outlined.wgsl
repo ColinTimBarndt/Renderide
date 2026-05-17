@@ -21,6 +21,22 @@
 //#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0
 //#mat_default _RimColor vec4 1.0 1.0 1.0 1.0
 //#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0
+//#mat_default _Saturation float 1.0
+//#mat_default _BumpScale float 1.0
+//#mat_default _Reflectivity float 1.0
+//#mat_default _RimAttenEffect float 1.0
+//#mat_default _RimRange float 0.7
+//#mat_default _RimThreshold float 0.1
+//#mat_default _RimSharpness float 0.1
+//#mat_default _SpecularArea float 0.5
+//#mat_default _ShadowSharpness float 0.5
+//#mat_default _ShadowRimRange float 0.7
+//#mat_default _ShadowRimThreshold float 0.1
+//#mat_default _ShadowRimSharpness float 0.3
+//#mat_default _OutlineWidth float 1.0
+//#mat_default _SSDistortion float 1.0
+//#mat_default _SSPower float 1.0
+//#mat_default _SSScale float 1.0
 
 #import renderide::xiexe::toon2 as xs
 #import renderide::xiexe::toon2::base as xb

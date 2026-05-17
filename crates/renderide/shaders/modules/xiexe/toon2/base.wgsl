@@ -261,7 +261,7 @@ struct SurfaceData {
     diffuse_color: vec3<f32>,
     /// Geometry normal after dual-sided back-face correction but before normal-map perturbation.
     raw_normal: vec3<f32>,
-    /// Final perturbed world-space normal (post-detail blend, post-back-face flip).
+    /// Final perturbed world-space normal after back-face correction.
     normal: vec3<f32>,
     /// World-space tangent matching `normal` after normal-map perturbation.
     tangent: vec3<f32>,

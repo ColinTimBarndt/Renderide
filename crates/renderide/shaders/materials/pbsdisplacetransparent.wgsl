@@ -25,6 +25,8 @@
 //#mat_default _PositionOffsetMagnitude vec4 1.0 1.0 0.0 0.0
 //#mat_default _UVOffsetMagnitude float 0.1
 //#mat_default _VertexOffsetMagnitude float 0.1
+//#mat_default _AlphaClip float 0.5
+//#mat_default _Glossiness float 0.5
 
 #import renderide::mesh::vertex as mv
 #import renderide::draw::per_draw as pd
@@ -163,7 +165,7 @@ fn vs_main(
     let uv = displaced_uv.uv;
 
     let world_p = d.model * vec4<f32>(displaced, 1.0);
-    let wn = normalize(d.normal_matrix * n.xyz);
+    let wn = mv::world_normal(d, n);
     let wt = mv::world_tangent(d, t);
 #ifdef MULTIVIEW
     let vp = mv::select_view_proj(d, view_idx);

@@ -275,29 +275,66 @@ mod tests {
     }
 
     #[test]
-    fn xiexe_layout_drops_xstoon3_extension_bindings() {
-        let wgsl =
-            embedded_shaders::embedded_target_wgsl("xstoon2.0_default").expect("xiexe target WGSL");
-        let reflected = reflect_raster_material_wgsl(wgsl).expect("xiexe WGSL reflection");
-        let unmangled: Vec<String> = reflected
-            .material_group1_names
-            .values()
-            .map(|n| shader_writer_unescaped_property_name(n).to_string())
-            .collect();
-        for forbidden in [
-            "_BakedCubemap",
-            "_BakedCubemap_sampler",
-            "_DetailNormalMap",
-            "_DetailNormalMap_sampler",
-            "_DetailMask",
-            "_DetailMask_sampler",
-            "_SpecularMap",
-            "_SpecularMap_sampler",
-        ] {
-            assert!(
-                !unmangled.iter().any(|n| n == forbidden),
-                "xstoon 2.0 must not bind XSToon3 extension `{forbidden}`: {unmangled:?}"
-            );
+    fn xiexe_layout_drops_non_core_extension_bindings() {
+        for stem in embedded_shaders::COMPILED_MATERIAL_STEMS
+            .iter()
+            .copied()
+            .filter(|stem| stem.starts_with("xstoon2.0"))
+        {
+            let wgsl = embedded_shaders::embedded_target_wgsl(stem).expect("xiexe target WGSL");
+            let reflected = reflect_raster_material_wgsl(wgsl).expect("xiexe WGSL reflection");
+            let unmangled: Vec<String> = reflected
+                .material_group1_names
+                .values()
+                .map(|n| shader_writer_unescaped_property_name(n).to_string())
+                .collect();
+            let uniform = reflected
+                .material_uniform
+                .as_ref()
+                .expect("xiexe material uniform block");
+            for forbidden in [
+                "_BakedCubemap",
+                "_BakedCubemap_sampler",
+                "_DetailNormalMap",
+                "_DetailNormalMap_sampler",
+                "_DetailMask",
+                "_DetailMask_sampler",
+                "_SpecularMap",
+                "_SpecularMap_sampler",
+            ] {
+                assert!(
+                    !unmangled.iter().any(|n| n == forbidden),
+                    "{stem} must not bind non-core extension `{forbidden}`: {unmangled:?}"
+                );
+            }
+            for forbidden in [
+                "_DetailNormalMapScale",
+                "_ReflectionMode",
+                "_ClearCoat",
+                "_ReflectionBlendMode",
+                "_ClearcoatStrength",
+                "_ClearcoatSmoothness",
+                "_ScaleWithLight",
+                "_EmissionToDiffuse",
+                "_ScaleWithLightSensitivity",
+                "_SpecMode",
+                "_SpecularStyle",
+                "_AnisotropicAX",
+                "_AnisotropicAY",
+                "_HalftoneDotSize",
+                "_HalftoneDotAmount",
+                "_HalftoneLineAmount",
+                "_UVSetDetNormal",
+                "_UVSetDetMask",
+                "_UVSetSpecular",
+                "_AdvMode",
+                "_TilingMode",
+            ] {
+                assert!(
+                    !uniform.fields.contains_key(forbidden),
+                    "{stem} must not reflect non-core extension uniform `{forbidden}`"
+                );
+            }
         }
     }
 
