@@ -51,14 +51,14 @@ fn fur_vertex_main(
     force_local: vec4<f32>,
 ) -> VertexOutput {
     let draw = pd::get_draw(instance_index);
-    let world_n = mv::world_normal_unnormalized(draw, n);
+    let world_n = mv::world_normal(draw, n);
     let world_t = mv::world_tangent(draw, t);
-    let world_base = mv::world_position(draw, pos).xyz;
-    let shell_offset = world_n * fur_length * fur_multiplier * hair_hardness;
+    let shell_offset = n * fur_length * fur_multiplier * hair_hardness;
+    let world_base = mv::world_position(draw, pos + shell_offset).xyz;
     let global_force = clamp(force_global.xyz, vec3<f32>(-1.0), vec3<f32>(1.0));
     let local_force = mv::model_vector(draw, clamp(force_local.xyz, vec3<f32>(-1.0), vec3<f32>(1.0)));
     let force_offset = (global_force + local_force) * fur_multiplier * fur_multiplier * fur_length;
-    let world_p = world_base + shell_offset + force_offset;
+    let world_p = world_base + force_offset;
     let vp = mv::select_view_proj(draw, view_idx);
 
     var out: VertexOutput;
