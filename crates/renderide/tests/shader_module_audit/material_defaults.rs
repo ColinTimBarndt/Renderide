@@ -2,6 +2,33 @@
 
 use super::*;
 
+const XSTOON2_DEFAULT_DIRECTIVES: &[&str] = &[
+    "//#mat_default _RimCubemapTint float 0.0",
+    "//#mat_default _SpecularAlbedoTint float 1.0",
+    "//#mat_default _Color vec4 1.0 1.0 1.0 1.0",
+    "//#mat_default _Cutoff float 0.5",
+    "//#mat_default _MatcapTint vec4 1.0 1.0 1.0 1.0",
+    "//#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0",
+    "//#mat_default _RimColor vec4 1.0 1.0 1.0 1.0",
+    "//#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0",
+    "//#mat_default _Saturation float 1.0",
+    "//#mat_default _BumpScale float 1.0",
+    "//#mat_default _Reflectivity float 1.0",
+    "//#mat_default _RimAttenEffect float 1.0",
+    "//#mat_default _RimRange float 0.7",
+    "//#mat_default _RimThreshold float 0.1",
+    "//#mat_default _RimSharpness float 0.1",
+    "//#mat_default _SpecularArea float 0.5",
+    "//#mat_default _ShadowSharpness float 0.5",
+    "//#mat_default _ShadowRimRange float 0.7",
+    "//#mat_default _ShadowRimThreshold float 0.1",
+    "//#mat_default _ShadowRimSharpness float 0.3",
+    "//#mat_default _OutlineWidth float 1.0",
+    "//#mat_default _SSDistortion float 1.0",
+    "//#mat_default _SSPower float 1.0",
+    "//#mat_default _SSScale float 1.0",
+];
+
 const EXPECTED_SHADER_DEFAULT_DIRECTIVES: &[(&str, &[&str])] = &[
     (
         "billboardunlit.wgsl",
@@ -890,127 +917,23 @@ const EXPECTED_SHADER_DEFAULT_DIRECTIVES: &[(&str, &[&str])] = &[
             "//#mat_default _StepSize float 0.1",
         ],
     ),
-    (
-        "xstoon2.0-cutout.wgsl",
-        &[
-            "//#mat_default _Color vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _Cutoff float 0.5",
-            "//#mat_default _MatcapTint vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0",
-            "//#mat_default _RimColor vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0",
-        ],
-    ),
+    ("xstoon2.0-cutout.wgsl", XSTOON2_DEFAULT_DIRECTIVES),
     (
         "xstoon2.0-cutouta2c-outlined.wgsl",
-        &[
-            "//#mat_default _Color vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _Cutoff float 0.5",
-            "//#mat_default _MatcapTint vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0",
-            "//#mat_default _RimColor vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0",
-        ],
+        XSTOON2_DEFAULT_DIRECTIVES,
     ),
-    (
-        "xstoon2.0-cutouta2c.wgsl",
-        &[
-            "//#mat_default _Color vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _Cutoff float 0.5",
-            "//#mat_default _MatcapTint vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0",
-            "//#mat_default _RimColor vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0",
-        ],
-    ),
-    (
-        "xstoon2.0-cutouta2cmasked.wgsl",
-        &[
-            "//#mat_default _Color vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _Cutoff float 0.5",
-            "//#mat_default _MatcapTint vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0",
-            "//#mat_default _RimColor vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0",
-        ],
-    ),
+    ("xstoon2.0-cutouta2c.wgsl", XSTOON2_DEFAULT_DIRECTIVES),
+    ("xstoon2.0-cutouta2cmasked.wgsl", XSTOON2_DEFAULT_DIRECTIVES),
     (
         "xstoon2.0-dithered-outlined.wgsl",
-        &[
-            "//#mat_default _Color vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _Cutoff float 0.5",
-            "//#mat_default _MatcapTint vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0",
-            "//#mat_default _RimColor vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0",
-        ],
+        XSTOON2_DEFAULT_DIRECTIVES,
     ),
-    (
-        "xstoon2.0-dithered.wgsl",
-        &[
-            "//#mat_default _Color vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _Cutoff float 0.5",
-            "//#mat_default _MatcapTint vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0",
-            "//#mat_default _RimColor vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0",
-        ],
-    ),
-    (
-        "xstoon2.0-fade.wgsl",
-        &[
-            "//#mat_default _Color vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _Cutoff float 0.5",
-            "//#mat_default _MatcapTint vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0",
-            "//#mat_default _RimColor vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0",
-        ],
-    ),
-    (
-        "xstoon2.0-outlined.wgsl",
-        &[
-            "//#mat_default _Color vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _Cutoff float 0.5",
-            "//#mat_default _MatcapTint vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0",
-            "//#mat_default _RimColor vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0",
-        ],
-    ),
-    (
-        "xstoon2.0-transparent.wgsl",
-        &[
-            "//#mat_default _Color vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _Cutoff float 0.5",
-            "//#mat_default _MatcapTint vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0",
-            "//#mat_default _RimColor vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0",
-        ],
-    ),
-    (
-        "xstoon2.0.wgsl",
-        &[
-            "//#mat_default _Color vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _Cutoff float 0.5",
-            "//#mat_default _MatcapTint vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0",
-            "//#mat_default _RimColor vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0",
-        ],
-    ),
-    (
-        "xstoon2.0_outlined.wgsl",
-        &[
-            "//#mat_default _Color vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _Cutoff float 0.5",
-            "//#mat_default _MatcapTint vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _OutlineColor vec4 0.0 0.0 0.0 1.0",
-            "//#mat_default _RimColor vec4 1.0 1.0 1.0 1.0",
-            "//#mat_default _ShadowRim vec4 1.0 1.0 1.0 1.0",
-        ],
-    ),
+    ("xstoon2.0-dithered.wgsl", XSTOON2_DEFAULT_DIRECTIVES),
+    ("xstoon2.0-fade.wgsl", XSTOON2_DEFAULT_DIRECTIVES),
+    ("xstoon2.0-outlined.wgsl", XSTOON2_DEFAULT_DIRECTIVES),
+    ("xstoon2.0-transparent.wgsl", XSTOON2_DEFAULT_DIRECTIVES),
+    ("xstoon2.0.wgsl", XSTOON2_DEFAULT_DIRECTIVES),
+    ("xstoon2.0_outlined.wgsl", XSTOON2_DEFAULT_DIRECTIVES),
 ];
 
 #[test]
@@ -1026,6 +949,6 @@ fn material_sources_declare_unity_property_defaults() -> io::Result<()> {
             );
         }
     }
-    assert_eq!(directive_count, 453);
+    assert_eq!(directive_count, 651);
     Ok(())
 }
