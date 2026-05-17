@@ -63,7 +63,7 @@ fn equirect_to_dir(uv: vec2<f32>) -> vec3<f32> {
     return dir;
 }
 
-//#pass forward
+//#pass type=forward
 @fragment
 fn fs_main(
     @builtin(position) frag_pos: vec4<f32>,

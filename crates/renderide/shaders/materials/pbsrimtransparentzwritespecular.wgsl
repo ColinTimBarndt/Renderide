@@ -88,7 +88,7 @@ fn vs_main(
 #endif
 }
 
-//#pass depth_prepass
+//#pass type=depth_prepass blend=off zwrite=on ztest=material_froox(main) color_mask=0 cull=material(back) offset=material(0,0) stencil=material
 @fragment
 fn fs_depth_only(
     @location(0) world_pos: vec3<f32>,
@@ -110,7 +110,7 @@ fn fs_depth_only(
     return rg::retain_globals_additive(vec4<f32>(touch, touch, touch, 0.0));
 }
 
-//#pass forward_transparent_cull_back
+//#pass type=forward name=forward_transparent_cull_back blend=transparent_material zwrite=material(off) cull=back color_mask=material(rgba)
 @fragment
 fn fs_main(
     @builtin(position) frag_pos: vec4<f32>,

@@ -303,7 +303,7 @@ fn vs_main(
     return out;
 }
 
-//#pass forward
+//#pass type=forward
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     if (kw_RECTCLIP() && rmath::outside_rect(in.local_xy, mat._Rect)) {

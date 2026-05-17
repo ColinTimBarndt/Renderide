@@ -108,7 +108,7 @@ fn distance_lerp(p: vec3<f32>) -> f32 {
     return clamp((dist / transition) + mat._Transition * 0.5, 0.0, 1.0);
 }
 
-//#pass forward
+//#pass type=forward
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let l = distance_lerp(lerp_position(in));

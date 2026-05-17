@@ -32,7 +32,7 @@ fn vs_main(
 #endif
 }
 
-//#pass forward
+//#pass type=forward
 @fragment
 fn fs_main() -> @location(0) vec4<f32> {
     // Touch the renderer-reserved uniform so naga-oil keeps the binding live across import pruning.

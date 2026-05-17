@@ -159,7 +159,7 @@ fn layer_color(
     return tint;
 }
 
-//#pass overlay_behind
+//#pass type=forward name=overlay_behind blend=material_overlay ztest=less color_mask=rgba
 @fragment
 fn fs_main_behind(in: mv::WorldVertexOutput) -> @location(0) vec4<f32> {
     let fresnel = fresnel_value(in, false);
@@ -181,7 +181,7 @@ fn fs_main_behind(in: mv::WorldVertexOutput) -> @location(0) vec4<f32> {
     return rg::retain_globals_additive(color);
 }
 
-//#pass overlay_front
+//#pass type=forward name=overlay_front blend=material_overlay ztest=greater_equal color_mask=rgba
 @fragment
 fn fs_main_front(in: mv::WorldVertexOutput) -> @location(0) vec4<f32> {
     let fresnel = fresnel_value(in, true);

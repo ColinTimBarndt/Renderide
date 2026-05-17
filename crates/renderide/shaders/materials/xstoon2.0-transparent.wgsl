@@ -46,7 +46,7 @@ fn vs_main(
 #endif
 }
 
-//#pass forward_premultiplied_transparent
+//#pass type=forward name=forward_premultiplied_transparent blend=premul zwrite=off ztest=main color_mask=rgba offset=0,0
 @fragment
 fn fs_forward_base(
     @builtin(position) frag_pos: vec4<f32>,

@@ -199,16 +199,16 @@ fn vs_l_09(
 #endif
 }
 
-//#pass forward vs=vs_l_00
-//#pass forward vs=vs_l_01
-//#pass forward vs=vs_l_02
-//#pass forward vs=vs_l_03
-//#pass forward vs=vs_l_04
-//#pass forward vs=vs_l_05
-//#pass forward vs=vs_l_06
-//#pass forward vs=vs_l_07
-//#pass forward vs=vs_l_08
-//#pass forward vs=vs_l_09
+//#pass type=forward vs=vs_l_00
+//#pass type=forward vs=vs_l_01
+//#pass type=forward vs=vs_l_02
+//#pass type=forward vs=vs_l_03
+//#pass type=forward vs=vs_l_04
+//#pass type=forward vs=vs_l_05
+//#pass type=forward vs=vs_l_06
+//#pass type=forward vs=vs_l_07
+//#pass type=forward vs=vs_l_08
+//#pass type=forward vs=vs_l_09
 @fragment
 fn fs_shell(input: furc::VertexOutput) -> @location(0) vec4<f32> {
     return fur::fragment_shell_3(input);

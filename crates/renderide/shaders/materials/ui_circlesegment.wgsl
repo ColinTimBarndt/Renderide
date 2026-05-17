@@ -141,7 +141,7 @@ fn compute_strength(angle_dist: f32, radius_dist: f32, corner: f32) -> f32 {
     return clamp(dist / width, 0.0, 1.0);
 }
 
-//#pass forward_filter
+//#pass type=forward name=forward_filter blend=material_filter
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     if (uirc::should_clip_rect_kw(in.obj_xy, mat._Rect, uicirclesegment_kw(UICIRCLESEGMENT_KW_RECTCLIP))) {

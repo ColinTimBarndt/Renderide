@@ -47,7 +47,7 @@ fn vs_main(
     return out;
 }
 
-//#pass forward offset_factor=0 offset_units=1
+//#pass type=forward offset=material(0,1)
 @fragment
 fn fs_main(
     @builtin(position) frag_pos: vec4<f32>,

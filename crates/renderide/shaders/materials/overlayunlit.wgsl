@@ -146,7 +146,7 @@ fn finalize_layer_color(color_in: vec4<f32>, vertex_color: vec4<f32>) -> vec4<f3
     return rg::retain_globals_additive(color);
 }
 
-//#pass overlay_behind
+//#pass type=forward name=overlay_behind blend=material_overlay ztest=less color_mask=rgba
 @fragment
 fn fs_behind(in: mv::UvColorVertexOutput) -> @location(0) vec4<f32> {
     let color = sample_layer(
@@ -159,7 +159,7 @@ fn fs_behind(in: mv::UvColorVertexOutput) -> @location(0) vec4<f32> {
     return finalize_layer_color(color, in.color);
 }
 
-//#pass overlay_front
+//#pass type=forward name=overlay_front blend=material_overlay ztest=greater_equal color_mask=rgba
 @fragment
 fn fs_front(in: mv::UvColorVertexOutput) -> @location(0) vec4<f32> {
     let color = sample_layer(

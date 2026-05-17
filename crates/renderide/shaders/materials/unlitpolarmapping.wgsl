@@ -36,7 +36,7 @@ fn vs_main(
 #endif
 }
 
-//#pass forward
+//#pass type=forward
 @fragment
 fn fs_main(
     @location(0) uv_in: vec2<f32>,

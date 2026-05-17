@@ -136,7 +136,7 @@ fn vs_main(
 #endif
 }
 
-//#pass forward
+//#pass type=forward
 @fragment
 fn fs_main(in: mv::WorldColorVertexOutput) -> @location(0) vec4<f32> {
     var n = normalize(in.world_n);

@@ -99,16 +99,16 @@ fn vs_l_04(
 #endif
 }
 
-//#pass forward_alpha_blend_zwrite vs=vs_l_00
+//#pass type=forward name=forward_alpha_blend_zwrite blend=alpha zwrite=on ztest=main color_mask=rgba offset=0,0 vs=vs_l_00
 @fragment
 fn fs_base(input: furc::VertexOutput) -> @location(0) vec4<f32> {
     return fur::fragment_base(input);
 }
 
-//#pass forward_alpha_blend_zwrite vs=vs_l_01
-//#pass forward_alpha_blend_zwrite vs=vs_l_02
-//#pass forward_alpha_blend_zwrite vs=vs_l_03
-//#pass forward_alpha_blend_zwrite vs=vs_l_04
+//#pass type=forward name=forward_alpha_blend_zwrite blend=alpha zwrite=on ztest=main color_mask=rgba offset=0,0 vs=vs_l_01
+//#pass type=forward name=forward_alpha_blend_zwrite blend=alpha zwrite=on ztest=main color_mask=rgba offset=0,0 vs=vs_l_02
+//#pass type=forward name=forward_alpha_blend_zwrite blend=alpha zwrite=on ztest=main color_mask=rgba offset=0,0 vs=vs_l_03
+//#pass type=forward name=forward_alpha_blend_zwrite blend=alpha zwrite=on ztest=main color_mask=rgba offset=0,0 vs=vs_l_04
 @fragment
 fn fs_shell(input: furc::VertexOutput) -> @location(0) vec4<f32> {
     return fur::fragment_shell(input);

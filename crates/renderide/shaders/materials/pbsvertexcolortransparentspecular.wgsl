@@ -194,7 +194,7 @@ fn vs_main(
 #endif
 }
 
-//#pass forward_transparent_cull_back
+//#pass type=forward name=forward_transparent_cull_back blend=transparent_material zwrite=material(off) cull=back color_mask=material(rgba)
 @fragment
 fn fs_forward_base(
     @builtin(position) frag_pos: vec4<f32>,

@@ -46,7 +46,7 @@ fn vs_main(
 #endif
 }
 
-//#pass forward_alpha_blend
+//#pass type=forward name=forward_alpha_blend blend=alpha zwrite=off ztest=main color_mask=rgba offset=0,0
 @fragment
 fn fs_forward_base(
     @builtin(position) frag_pos: vec4<f32>,

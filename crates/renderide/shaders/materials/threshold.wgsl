@@ -60,7 +60,7 @@ fn vs_main(
     return out;
 }
 
-//#pass forward_filter
+//#pass type=forward name=forward_filter blend=material_filter
 @fragment
 fn fs_main(
     @builtin(position) frag_pos: vec4<f32>,

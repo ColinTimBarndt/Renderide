@@ -1,8 +1,7 @@
 //! Unity PBS rim transparent (`Shader "PBSRimTransparent"`): same surface logic as `pbsrim`.
 //!
-//! Transparent blend/cull state is driven by the host's material properties; the WGSL only
-//! preserves the material's alpha in its output and back-flips the normal so lit two-sided
-//! geometry shades correctly.
+//! Transparent blend state is driven by the host's material properties; the forward pass is
+//! back-culled to match Unity's rim-transparent material behavior.
 //!
 //! Froox variant bits populate `_RenderideVariantBits`; PBSRimTransparent's keywords (sorted
 //! alphabetically) occupy bits 0-5. `_ZWRITE` is pipeline-affecting (depth write) only, so it
@@ -107,7 +106,7 @@ fn vs_main(
 #endif
 }
 
-//#pass forward_transparent_cull_back
+//#pass type=forward name=forward_transparent_cull_back blend=transparent_material zwrite=material(off) cull=back color_mask=material(rgba)
 @fragment
 fn fs_main(
     @builtin(position) frag_pos: vec4<f32>,

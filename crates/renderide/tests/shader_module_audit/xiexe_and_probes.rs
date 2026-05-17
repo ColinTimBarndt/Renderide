@@ -6,11 +6,11 @@ use super::*;
 fn xiexe_transparent_keeps_premultiplied_transparent_pass_directive() -> io::Result<()> {
     let src = material_source("xstoon2.0-transparent.wgsl")?;
     assert!(
-        src.contains("//#pass forward_premultiplied_transparent"),
+        src.contains("//#pass type=forward name=forward_premultiplied_transparent"),
         "xstoon2.0-transparent.wgsl must use the source-authored premultiplied transparent pass"
     );
     assert!(
-        !src.contains("//#pass forward\n"),
+        !src.contains("//#pass type=forward\n"),
         "xstoon2.0-transparent.wgsl must not alias the opaque forward pass"
     );
     let main_src = source_file(manifest_dir().join("shaders/modules/xiexe/toon2/main.wgsl"))?;

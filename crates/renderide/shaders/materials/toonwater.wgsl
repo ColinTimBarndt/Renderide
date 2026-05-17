@@ -160,7 +160,7 @@ fn refract_screen_uv(uv_in: vec2<f32>) -> vec2<f32> {
     return clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0));
 }
 
-//#pass forward
+//#pass type=forward
 @fragment
 fn fs_main(
     @builtin(position) frag_pos: vec4<f32>,

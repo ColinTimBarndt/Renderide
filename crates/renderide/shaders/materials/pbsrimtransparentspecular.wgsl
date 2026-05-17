@@ -1,8 +1,8 @@
 //! Unity PBS rim transparent specular (`Shader "PBSRimTransparentSpecular"`): same surface logic
 //! as [`pbsrimspecular`](super::pbsrimspecular).
 //!
-//! Transparent default render state is driven by the host's `_SrcBlend` / `_DstBlend` / `_ZWrite`
-//! material properties; the WGSL is identical to the opaque sibling.
+//! Transparent blend and depth-write state is driven by the host's material properties; the forward
+//! pass is back-culled to match Unity's rim-transparent material behavior.
 //!
 //! Variant metadata never enables `_ALBEDOTEX`, so the albedo branch is unreachable in this
 //! material. `_Color` is the only base color and `_MainTex` is not bound.
@@ -90,7 +90,7 @@ fn vs_main(
 #endif
 }
 
-//#pass forward_transparent_cull_back
+//#pass type=forward name=forward_transparent_cull_back blend=transparent_material zwrite=material(off) cull=back color_mask=material(rgba)
 @fragment
 fn fs_main(
     @builtin(position) frag_pos: vec4<f32>,

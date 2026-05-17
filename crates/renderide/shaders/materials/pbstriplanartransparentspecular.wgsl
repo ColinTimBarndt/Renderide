@@ -190,7 +190,7 @@ fn vs_main(
     return out;
 }
 
-//#pass forward_transparent
+//#pass type=forward name=forward_transparent blend=transparent_material zwrite=material(off) cull=material(off) color_mask=material(rgba)
 @fragment
 fn fs_forward_base(
     @builtin(position) frag_pos: vec4<f32>,

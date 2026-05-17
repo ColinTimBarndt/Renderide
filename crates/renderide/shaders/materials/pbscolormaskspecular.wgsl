@@ -209,7 +209,7 @@ fn vs_main(
 }
 
 /// Forward-base pass: ambient + directional lighting + emission.
-//#pass forward
+//#pass type=forward
 @fragment
 fn fs_forward_base(
     @builtin(position) frag_pos: vec4<f32>,

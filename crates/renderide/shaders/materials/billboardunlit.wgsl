@@ -225,7 +225,7 @@ fn vertex_color(color: vec4<f32>) -> vec4<f32> {
     return color;
 }
 
-//#pass forward
+//#pass type=forward
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let use_texture = kw_TEXTURE();

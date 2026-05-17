@@ -251,7 +251,7 @@ fn shade(
     return plight::shade_metallic_transparent_clustered(frag_xy, world_pos, view_layer, surface, options);
 }
 
-//#pass forward_transparent
+//#pass type=forward name=forward_transparent blend=transparent_material zwrite=material(off) cull=material(off) color_mask=material(rgba)
 @fragment
 fn fs_forward_base(
     @builtin(position) frag_pos: vec4<f32>,

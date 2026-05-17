@@ -324,8 +324,10 @@ pub const COMPILED_MATERIAL_STEMS: &[&str] = &[
 #[cfg(test)]
 mod tests {
     use crate::shader::directives::{
-        BuildDepthCompareDomain, BuildPassDirective, BuildPassKind, MaterialDefaultDirective,
-        MaterialDefaultValue, TextureDefaultDirective, TextureDefaultKind,
+        BuildBlend, BuildColorWrites, BuildCullMode, BuildDepthCompare, BuildDepthCompareDomain,
+        BuildMaterialPassState, BuildPassDirective, BuildPassType, BuildRenderStatePolicy,
+        MaterialDefaultDirective, MaterialDefaultValue, TextureDefaultDirective,
+        TextureDefaultKind,
     };
     use crate::shader::model::{CompiledShader, CompiledShaderTarget, ShaderSourceClass};
 
@@ -378,22 +380,45 @@ mod tests {
             &[("outline_default", "wgsl body")],
             vec![
                 BuildPassDirective {
-                    kind: BuildPassKind::Forward,
+                    pass_type: BuildPassType::Forward,
+                    name: "forward".to_string(),
                     fragment_entry: "fs_main".to_string(),
                     vertex_entry: "vs_main".to_string(),
                     alpha_to_coverage: true,
                     depth_compare_domain: BuildDepthCompareDomain::FrooxZTest,
+                    depth_compare: BuildDepthCompare::Main,
+                    depth_write: true,
+                    cull_mode: BuildCullMode::Back,
+                    blend: BuildBlend::Off,
+                    write_mask: BuildColorWrites::Rgb,
                     depth_bias_slope_scale_bits: 0.0f32.to_bits(),
                     depth_bias_constant: 0,
+                    material_state: BuildMaterialPassState::Forward,
+                    render_state_policy: BuildRenderStatePolicy::ALL_MATERIAL,
                 },
                 BuildPassDirective {
-                    kind: BuildPassKind::Outline,
+                    pass_type: BuildPassType::Forward,
+                    name: "outline".to_string(),
                     fragment_entry: "fs_outline".to_string(),
                     vertex_entry: "vs_outline".to_string(),
                     alpha_to_coverage: false,
                     depth_compare_domain: BuildDepthCompareDomain::FrooxZTest,
+                    depth_compare: BuildDepthCompare::Main,
+                    depth_write: true,
+                    cull_mode: BuildCullMode::Front,
+                    blend: BuildBlend::Off,
+                    write_mask: BuildColorWrites::Rgb,
                     depth_bias_slope_scale_bits: 0.0f32.to_bits(),
                     depth_bias_constant: 0,
+                    material_state: BuildMaterialPassState::Static,
+                    render_state_policy: BuildRenderStatePolicy {
+                        color_mask: true,
+                        depth_write: true,
+                        depth_compare: true,
+                        cull: false,
+                        stencil: true,
+                        depth_offset: true,
+                    },
                 },
             ],
             vec![
@@ -415,12 +440,10 @@ mod tests {
         emit_compiled_shader(&compiled, target_dir.path(), &mut composed)?;
         let embedded = render_embedded_shaders_rs(&composed);
 
-        assert!(
-            embedded.contains("pass_from_kind(crate::materials::PassKind::Forward, \"fs_main\")")
-        );
+        assert!(embedded.contains("pass_type: crate::materials::PassType::Forward"));
         assert!(embedded.contains("alpha_to_coverage: true"));
         assert!(embedded.contains(
-            "MaterialPassDesc { vertex_entry: \"vs_outline\", ..crate::materials::pass_from_kind(crate::materials::PassKind::Outline, \"fs_outline\") }"
+            "name: \"outline\", pass_type: crate::materials::PassType::Forward, vertex_entry: \"vs_outline\", fragment_entry: \"fs_outline\""
         ));
         assert!(embedded.contains("COMPILED_MATERIAL_STEMS"));
         assert!(embedded.contains("EmbeddedTextureDefaultKind"));

@@ -70,7 +70,7 @@ fn vs_outline(
 #endif
 }
 
-//#pass outline vs=vs_outline a2c=true
+//#pass type=forward name=outline blend=off cull=front vs=vs_outline a2c=true
 @fragment
 fn fs_outline(
     @builtin(position) frag_pos: vec4<f32>,
@@ -89,7 +89,7 @@ fn fs_outline(
     );
 }
 
-//#pass forward a2c=true
+//#pass type=forward a2c=true
 @fragment
 fn fs_forward_base(
     @builtin(position) frag_pos: vec4<f32>,

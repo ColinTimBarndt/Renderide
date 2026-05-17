@@ -2,6 +2,22 @@
 
 use super::*;
 
+fn pass_directives(src: &str) -> Vec<&str> {
+    src.lines()
+        .filter_map(|line| {
+            let rest = line.trim_start().strip_prefix("//#pass ")?;
+            let pass_type = rest
+                .split_whitespace()
+                .find_map(|token| token.strip_prefix("type="))?;
+            Some(
+                rest.split_whitespace()
+                    .find_map(|token| token.strip_prefix("name="))
+                    .unwrap_or(pass_type),
+            )
+        })
+        .collect()
+}
+
 fn assert_keyword_bit(src: &str, file_name: &str, constant_name: &str, bit_index: u32) {
     let needle = format!("const {constant_name}: u32 = 1u << {bit_index}u;");
     assert!(src.contains(&needle), "{file_name} must define `{needle}`");
@@ -108,6 +124,75 @@ fn selected_pbs_materials_keep_sorted_shader_variant_bits() -> io::Result<()> {
         ("PIXELATE_KW_RESOLUTION_TEX", 1),
     ] {
         assert_keyword_bit(&pixelate, "pixelate.wgsl", constant_name, bit_index);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn pbs_transparent_roots_keep_authored_pass_directives() -> io::Result<()> {
+    for material in [
+        "pbsdisplacetransparent.wgsl",
+        "pbsdisplacespeculartransparent.wgsl",
+        "pbsdistancelerptransparent.wgsl",
+        "pbsdistancelerpspeculartransparent.wgsl",
+        "pbsintersect.wgsl",
+        "pbsintersectspecular.wgsl",
+        "pbsslicetransparent.wgsl",
+        "pbsslicetransparentspecular.wgsl",
+        "pbstriplanartransparent.wgsl",
+        "pbstriplanartransparentspecular.wgsl",
+    ] {
+        let src = material_source(material)?;
+        assert_eq!(pass_directives(&src), ["forward_transparent"], "{material}");
+    }
+
+    for material in ["pbsrimtransparent.wgsl", "pbsrimtransparentspecular.wgsl"] {
+        let src = material_source(material)?;
+        assert_eq!(
+            pass_directives(&src),
+            ["forward_transparent_cull_back"],
+            "{material}"
+        );
+    }
+
+    for material in [
+        "pbsrimtransparentzwrite.wgsl",
+        "pbsrimtransparentzwritespecular.wgsl",
+    ] {
+        let src = material_source(material)?;
+        assert_eq!(
+            pass_directives(&src),
+            ["depth_prepass", "forward_transparent_cull_back"],
+            "{material}"
+        );
+    }
+
+    for material in [
+        "pbsvertexcolortransparent.wgsl",
+        "pbsvertexcolortransparentspecular.wgsl",
+    ] {
+        let src = material_source(material)?;
+        assert_eq!(
+            pass_directives(&src),
+            ["forward_transparent_cull_back"],
+            "{material}"
+        );
+    }
+
+    for material in [
+        "pbsdualsidedtransparent.wgsl",
+        "pbsdualsidedtransparentspecular.wgsl",
+    ] {
+        let src = material_source(material)?;
+        assert_eq!(
+            pass_directives(&src),
+            [
+                "forward_transparent_cull_front",
+                "forward_transparent_cull_back"
+            ],
+            "{material}"
+        );
     }
 
     Ok(())

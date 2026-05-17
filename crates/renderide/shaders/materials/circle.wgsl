@@ -29,7 +29,7 @@ fn vs_main(
 #endif
 }
 
-//#pass transparent_rgb
+//#pass type=forward name=transparent_rgb blend=alpha zwrite=off ztest=main cull=off color_mask=rgb stencil=off offset=0,0
 @fragment
 fn fs_main(
     @location(0) uv: vec2<f32>,

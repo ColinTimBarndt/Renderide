@@ -153,7 +153,7 @@ fn vs_main(
     return out;
 }
 
-//#pass volume_front
+//#pass type=forward name=volume_front blend=material_overlay zwrite=off ztest=always cull=front color_mask=rgba offset=0,0
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let draw = pd::get_draw(rg::draw_index_from_layer(in.view_layer));

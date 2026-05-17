@@ -48,7 +48,7 @@ fn vs_main(
 #endif
 }
 
-//#pass forward a2c=true
+//#pass type=forward a2c=true
 @fragment
 fn fs_forward_base(
     @builtin(position) frag_pos: vec4<f32>,
