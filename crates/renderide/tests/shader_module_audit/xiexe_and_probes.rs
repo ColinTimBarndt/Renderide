@@ -2,6 +2,55 @@
 
 use super::*;
 
+const XSTOON2_MATERIAL_ROOTS: &[&str] = &[
+    "xstoon2.0.wgsl",
+    "xstoon2.0-cutout.wgsl",
+    "xstoon2.0-cutouta2c.wgsl",
+    "xstoon2.0-cutouta2c-outlined.wgsl",
+    "xstoon2.0-cutouta2cmasked.wgsl",
+    "xstoon2.0-dithered.wgsl",
+    "xstoon2.0-dithered-outlined.wgsl",
+    "xstoon2.0-fade.wgsl",
+    "xstoon2.0-outlined.wgsl",
+    "xstoon2.0-transparent.wgsl",
+    "xstoon2.0_outlined.wgsl",
+];
+
+const XSTOON2_OUTLINED_MATERIAL_ROOTS: &[&str] = &[
+    "xstoon2.0-cutouta2c-outlined.wgsl",
+    "xstoon2.0-dithered-outlined.wgsl",
+    "xstoon2.0-outlined.wgsl",
+    "xstoon2.0_outlined.wgsl",
+];
+
+const XIEXE_NON_CORE_EXTENSION_IDENTIFIERS: &[&str] = &[
+    "_DetailNormalMap",
+    "_DetailMask",
+    "_DetailNormalMapScale",
+    "_ReflectionMode",
+    "_ClearCoat",
+    "_ReflectionBlendMode",
+    "_BakedCubemap",
+    "_ClearcoatStrength",
+    "_ClearcoatSmoothness",
+    "_ScaleWithLight",
+    "_EmissionToDiffuse",
+    "_ScaleWithLightSensitivity",
+    "_SpecMode",
+    "_SpecularStyle",
+    "_SpecularMap",
+    "_AnisotropicAX",
+    "_AnisotropicAY",
+    "_HalftoneDotSize",
+    "_HalftoneDotAmount",
+    "_HalftoneLineAmount",
+    "_UVSetDetNormal",
+    "_UVSetDetMask",
+    "_UVSetSpecular",
+    "_AdvMode",
+    "_TilingMode",
+];
+
 #[test]
 fn xiexe_transparent_keeps_premultiplied_transparent_pass_directive() -> io::Result<()> {
     let src = material_source("xstoon2.0-transparent.wgsl")?;
@@ -65,9 +114,46 @@ fn xiexe_matcap_uses_stereo_center_view_dir() -> io::Result<()> {
     ] {
         assert!(
             !lighting_src.contains(forbidden),
-            "Xiexe lighting must not retain XSToon3 extension `{forbidden}`"
+            "Xiexe lighting must not retain non-core extension `{forbidden}`"
         );
     }
+    Ok(())
+}
+
+#[test]
+fn xiexe_sources_exclude_non_core_extension_identifiers() -> io::Result<()> {
+    for material in XSTOON2_MATERIAL_ROOTS
+        .iter()
+        .copied()
+        .chain(["xstoonstenciler.wgsl"])
+    {
+        let src = material_source(material)?;
+        for forbidden in XIEXE_NON_CORE_EXTENSION_IDENTIFIERS {
+            assert!(
+                !src.contains(forbidden),
+                "{material} must not declare non-core extension `{forbidden}`"
+            );
+        }
+    }
+
+    for module in [
+        "xiexe/toon2/base.wgsl",
+        "xiexe/toon2/surface.wgsl",
+        "xiexe/toon2/alpha.wgsl",
+        "xiexe/toon2/lighting.wgsl",
+        "xiexe/toon2/outline.wgsl",
+        "xiexe/toon2/variant_bits.wgsl",
+        "xiexe/toon2/main.wgsl",
+    ] {
+        let src = module_source(module)?;
+        for forbidden in XIEXE_NON_CORE_EXTENSION_IDENTIFIERS {
+            assert!(
+                !src.contains(forbidden),
+                "{module} must not retain non-core extension `{forbidden}`"
+            );
+        }
+    }
+
     Ok(())
 }
 
@@ -127,30 +213,46 @@ fn xiexe_primary_direct_specular_uses_ggx_pbr_core() -> io::Result<()> {
 }
 
 #[test]
-fn xiexe_roots_declare_unity_defaults_for_unsent_tint_fields() -> io::Result<()> {
-    for material in [
-        "xstoon2.0.wgsl",
-        "xstoon2.0-cutout.wgsl",
-        "xstoon2.0-cutouta2c.wgsl",
-        "xstoon2.0-cutouta2c-outlined.wgsl",
-        "xstoon2.0-cutouta2cmasked.wgsl",
-        "xstoon2.0-dithered.wgsl",
-        "xstoon2.0-dithered-outlined.wgsl",
-        "xstoon2.0-fade.wgsl",
-        "xstoon2.0-outlined.wgsl",
-        "xstoon2.0-transparent.wgsl",
-        "xstoon2.0_outlined.wgsl",
-    ] {
+fn xiexe_roots_declare_unity_defaults_for_nonzero_core_fields() -> io::Result<()> {
+    for material in XSTOON2_MATERIAL_ROOTS.iter().copied() {
         let src = material_source(material)?;
         for directive in [
             "//#mat_default _RimCubemapTint float 0.0",
             "//#mat_default _SpecularAlbedoTint float 1.0",
+            "//#mat_default _Saturation float 1.0",
+            "//#mat_default _BumpScale float 1.0",
+            "//#mat_default _Reflectivity float 1.0",
+            "//#mat_default _RimAttenEffect float 1.0",
+            "//#mat_default _RimRange float 0.7",
+            "//#mat_default _RimThreshold float 0.1",
+            "//#mat_default _RimSharpness float 0.1",
+            "//#mat_default _SpecularArea float 0.5",
+            "//#mat_default _ShadowSharpness float 0.5",
+            "//#mat_default _ShadowRimRange float 0.7",
+            "//#mat_default _ShadowRimThreshold float 0.1",
+            "//#mat_default _ShadowRimSharpness float 0.3",
+            "//#mat_default _OutlineWidth float 1.0",
+            "//#mat_default _SSDistortion float 1.0",
+            "//#mat_default _SSPower float 1.0",
+            "//#mat_default _SSScale float 1.0",
         ] {
             assert!(
                 src.contains(directive),
-                "{material} must declare `{directive}`"
+                "{material} must declare Unity default `{directive}`"
             );
         }
+    }
+    Ok(())
+}
+
+#[test]
+fn xiexe_outlined_roots_declare_outline_mask_texture_default() -> io::Result<()> {
+    for material in XSTOON2_OUTLINED_MATERIAL_ROOTS.iter().copied() {
+        let src = material_source(material)?;
+        assert!(
+            src.contains("//#texture_default _OutlineMask white"),
+            "{material} must keep the Unity white fallback for `_OutlineMask`"
+        );
     }
     Ok(())
 }
