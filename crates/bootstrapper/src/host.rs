@@ -12,6 +12,7 @@ use crate::config::ResoBootConfig;
 use crate::paths;
 
 /// Runtime configuration file shipped next to `Renderite.Host.dll`.
+#[cfg(target_os = "linux")]
 const RENDERITE_HOST_RUNTIME_CONFIG: &str = "Renderite.Host.runtimeconfig.json";
 
 /// Removes `Microsoft.WindowsDesktop.App` from `runtimeOptions.frameworks` for Wine compatibility.
@@ -110,6 +111,7 @@ fn finish_spawn(mut cmd: Command, lifetime: &ChildLifetimeGroup) -> std::io::Res
 }
 
 /// Returns the runtimeconfig path for a native Host launch directory.
+#[cfg(target_os = "linux")]
 fn host_runtime_config_path(resonite_dir: &Path) -> PathBuf {
     resonite_dir.join(RENDERITE_HOST_RUNTIME_CONFIG)
 }
@@ -201,6 +203,7 @@ mod tests {
     use std::fs;
     use std::io::Cursor;
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn host_runtime_config_path_uses_host_directory() {
         let root = PathBuf::from("renderite-host");
