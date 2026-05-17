@@ -51,7 +51,7 @@ fn fur_vertex_main(
     force_local: vec4<f32>,
 ) -> VertexOutput {
     let draw = pd::get_draw(instance_index);
-    let world_n = mv::world_normal(draw, n);
+    let world_n = mv::world_normal_unnormalized(draw, n);
     let world_t = mv::world_tangent(draw, t);
     let world_base = mv::world_position(draw, pos).xyz;
     let shell_offset = world_n * fur_length * fur_multiplier * hair_hardness;
@@ -64,7 +64,7 @@ fn fur_vertex_main(
     var out: VertexOutput;
     out.clip_pos = vp * vec4<f32>(world_p, 1.0);
     out.world_pos = world_p;
-    out.world_n = world_n;
+    out.world_n = normalize(world_n);
     out.world_t = world_t;
     out.main_uv = uvu::apply_st(uv0, main_st);
     out.noise_uv = uvu::apply_st(uv0, noise_st);
