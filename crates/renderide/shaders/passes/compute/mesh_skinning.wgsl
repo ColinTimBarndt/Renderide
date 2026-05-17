@@ -131,12 +131,20 @@ fn skin_main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     let nb = src_n[src_ni];
     let n_bind = vec3<f32>(nb.xyz);
-    var acc_n = vec3<f32>(0.0);
-    acc_n += w.x * (normal_matrix(bone_matrices[bx]) * n_bind);
-    acc_n += w.y * (normal_matrix(bone_matrices[by]) * n_bind);
-    acc_n += w.z * (normal_matrix(bone_matrices[bz]) * n_bind);
-    acc_n += w.w * (normal_matrix(bone_matrices[bw]) * n_bind);
+    // This approach preserves perpendicular normals:
+    // var acc_n = vec3<f32>(0.0);
+    // acc_n += w.x * (normal_matrix(bone_matrices[bx]) * n_bind);
+    // acc_n += w.y * (normal_matrix(bone_matrices[by]) * n_bind);
+    // acc_n += w.z * (normal_matrix(bone_matrices[bz]) * n_bind);
+    // acc_n += w.w * (normal_matrix(bone_matrices[bw]) * n_bind);
 
+    // To preserve Unity behavior, we need to do this instead:
+    var acc_n = vec4<f32>(0.0);
+    acc_n += w.x * (bone_matrices[bx] * nb);
+    acc_n += w.y * (bone_matrices[by] * nb);
+    acc_n += w.z * (bone_matrices[bz] * nb);
+    acc_n += w.w * (bone_matrices[bw] * nb);
+    
     let tangent_enabled = (skin_dispatch.flags & SKIN_TANGENTS) != 0u;
     var tb = vec4<f32>(0.0);
     var t_bind = vec3<f32>(0.0);
@@ -160,13 +168,17 @@ fn skin_main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     if (ws > 1e-6) {
         dst_pos[dst_pi] = vec4<f32>((acc / ws).xyz, p.w);
-        let n_fallback = safe_normalize(n_bind, vec3<f32>(0.0, 0.0, 1.0));
-        let nn = safe_normalize(acc_n / ws, n_fallback);
-        dst_n[dst_ni] = vec4<f32>(nn, nb.w);
+        // let n_fallback = safe_normalize(n_bind, vec3<f32>(0.0, 0.0, 1.0));
+        // let nn = safe_normalize(acc_n / ws, n_fallback);
+        // dst_n[dst_ni] = vec4<f32>(nn, nb.w);
+
+        // Don't normalize, this is important for some materials.
+        let norm = acc_n / ws;
+        dst_n[dst_ni] = norm;
         if (tangent_enabled) {
-            let tt = orthogonal_tangent(acc_t / ws, nn, t_bind);
+            let tt = orthogonal_tangent(acc_t / ws, norm.xyz, t_bind);
             let bb = safe_normalize(acc_b / ws, b_bind);
-            let sign = select(1.0, -1.0, dot(cross(nn, tt), bb) < 0.0);
+            let sign = select(1.0, -1.0, dot(cross(norm.xyz, tt), bb) < 0.0);
             dst_t[dst_ti] = vec4<f32>(tt, sign);
         }
     } else {
