@@ -5,6 +5,7 @@
 use glam::{Mat4, Quat, Vec3};
 
 use crate::camera::{view_matrix_for_world_mesh_render_space, view_matrix_from_render_transform};
+use crate::color_space::DEFAULT_SKYBOX_CLEAR_COLOR;
 use crate::scene::CameraRenderableEntry;
 use crate::scene::blit_to_display::BlitToDisplayEntry;
 use crate::scene::overrides::RenderTransformOverrideEntry;
@@ -225,6 +226,41 @@ fn active_blit_for_display_ignores_overlay_dash_camera() {
 
     assert!(scene.active_blit_for_display(0).is_none());
     assert!(scene.active_blit_for_display(1).is_none());
+}
+
+#[test]
+fn desktop_blit_for_display_uses_skybox_clear_for_synthesized_dash_blit() {
+    let mut scene = SceneCoordinator::new();
+    let overlay = RenderSpaceId(3);
+    scene.spaces.insert(
+        overlay,
+        RenderSpaceState {
+            id: overlay,
+            is_active: true,
+            is_overlay: true,
+            cameras: vec![CameraRenderableEntry {
+                renderable_index: 0,
+                transform_id: 0,
+                state: CameraState {
+                    projection: CameraProjection::Orthographic,
+                    render_texture_asset_id: 77,
+                    selective_render_count: 1,
+                    flags: 1,
+                    ..Default::default()
+                },
+                selective_transform_ids: vec![5],
+                exclude_transform_ids: Vec::new(),
+            }],
+            ..Default::default()
+        },
+    );
+
+    let state = scene
+        .desktop_blit_for_display(0)
+        .expect("primary desktop display should synthesize dashboard blit");
+
+    assert_eq!(state.background_color, DEFAULT_SKYBOX_CLEAR_COLOR);
+    assert!(scene.desktop_blit_for_display(1).is_none());
 }
 
 #[test]

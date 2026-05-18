@@ -140,9 +140,9 @@ impl SkyboxRenderer {
         pipeline_state: &WorldMeshForwardPipelineState,
     ) -> Option<PreparedSkybox> {
         match frame.view.clear.mode {
-            CameraClearMode::Skybox => {
-                self.prepare_material_skybox(device, uploads, frame, pipeline_state)
-            }
+            CameraClearMode::Skybox => self
+                .prepare_material_skybox(device, uploads, frame, pipeline_state)
+                .or_else(|| self.prepare_clear_color(device, uploads, frame, pipeline_state)),
             CameraClearMode::Color => {
                 self.prepare_clear_color(device, uploads, frame, pipeline_state)
             }

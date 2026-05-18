@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use glam::Mat4;
 
 use crate::assets::texture::{HostTextureAssetKind, pack_host_texture_id};
+use crate::color_space::DEFAULT_SKYBOX_CLEAR_COLOR;
 use crate::ipc::SharedMemoryAccessor;
 use crate::shared::{
     BlitToDisplayState, FrameSubmitData, RenderSH2, RenderSpaceUpdate, RenderingContext,
@@ -372,7 +373,7 @@ impl SceneCoordinator {
         Some(BlitToDisplayState {
             renderable_index: -1,
             texture_id: packed_texture_id,
-            background_color: glam::Vec4::new(0.0, 0.0, 0.0, 1.0),
+            background_color: DEFAULT_SKYBOX_CLEAR_COLOR,
             display_index: PRIMARY_DESKTOP_DISPLAY_INDEX,
             flags: 0,
             _padding: [0; 1],

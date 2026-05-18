@@ -13,6 +13,7 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 
 use crate::camera::{HostCameraFrame, ViewId};
+use crate::color_space::DEFAULT_SKYBOX_CLEAR_COLOR;
 use crate::gpu::{GpuLimits, MsaaDepthResolveResources};
 use crate::materials::MaterialSystem;
 use crate::mesh_deform::{GpuSkinCache, MeshDeformScratch, MeshPreprocessPipelines};
@@ -40,7 +41,7 @@ impl FrameViewClear {
     pub fn skybox() -> Self {
         Self {
             mode: CameraClearMode::Skybox,
-            color: glam::Vec4::ZERO,
+            color: DEFAULT_SKYBOX_CLEAR_COLOR,
         }
     }
 
@@ -250,7 +251,7 @@ mod tests {
     fn main_view_clear_defaults_to_skybox() {
         let clear = FrameViewClear::default();
         assert_eq!(clear.mode, CameraClearMode::Skybox);
-        assert_eq!(clear.color, glam::Vec4::ZERO);
+        assert_eq!(clear.color, glam::Vec4::new(0.1, 0.1, 0.1, 1.0));
     }
 
     #[test]

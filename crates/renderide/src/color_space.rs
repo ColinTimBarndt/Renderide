@@ -1,6 +1,9 @@
-//! Shared color-space conversion helpers for host-authored values.
+//! Shared color constants and color-space conversion helpers for host-authored values.
 
 use glam::{Vec3, Vec4};
+
+/// Linear RGBA fallback color used when a skybox-backed view has no material sky to draw.
+pub(crate) const DEFAULT_SKYBOX_CLEAR_COLOR: Vec4 = Vec4::new(0.1, 0.1, 0.1, 1.0);
 
 /// Converts one sRGB channel to linear-light space.
 ///
